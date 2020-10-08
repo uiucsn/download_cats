@@ -68,7 +68,7 @@ class FileDownloader:
         if self.checksum is not None and self.checksum != self.md5.digest().hex():
             raise ValueError('md5 checksum mismatch')
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.fh.close()
         self.resp.close()
 
