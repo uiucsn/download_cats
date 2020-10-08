@@ -1,6 +1,7 @@
 import logging
 import os
 from hashlib import md5
+from multiprocessing import Pool
 
 import requests
 
@@ -60,13 +61,16 @@ class FileDownloader:
             self.write = self._write
 
     def __enter__(self):
+        logging.info(f'Downloading {self.url} to {self.path}')
         self.fh = open(self.path, 'wb')
         self.resp = self.session.get(self.url, stream=True)
         self.resp.raise_for_status()
         for chunk in self.resp.iter_content(chunk_size=self.chunk_size):
             self.write(chunk)
         if self.checksum is not None and self.checksum != self.md5.digest().hex():
-            raise ValueError('md5 checksum mismatch')
+            msg = 'md5 checksum mismatch'
+            logging.warning(msg)
+            raise RuntimeError(msg)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.fh.close()
@@ -92,6 +96,7 @@ def download_file(url, path, checksum, session=None):
     """
     if os.path.exists(path):
         if checksum == hash_file(path):
+            logging.info(f'File {path} exists and checksum matches')
             return False
     with FileDownloader(url, path, checksum=checksum, session=session):
         return True
@@ -114,4 +119,42 @@ def url_text_content(url, session=None):
     return resp.text
 
 
-__all__ = ('hash_file', 'parse_checksums', 'download_file', 'url_text_content')
+def subclasses(cls):
+    return set(cls.__subclasses__()).union(subcls for c in cls.__subclasses__() for subcls in subclasses(c))
+
+
+class Everything:
+    def __contains__(self, value):
+        return True
+
+    def __repr__(self):
+        return 'Everything'
+
+
+def configure_logging(cli_args):
+    if cli_args.verbose == 0:
+        logging_level = logging.ERROR
+    elif cli_args.verbose == 1:
+        logging_level = logging.WARNING
+    elif cli_args.verbose == 2:
+        logging_level = logging.INFO
+    else:
+        logging_level = logging.DEBUG
+    logging.basicConfig(level=logging_level)
+
+
+def pool_initializer(cli_args):
+    configure_logging(cli_args)
+
+
+def process_pool(cli_args, **kwargs):
+    return Pool(
+        processes=cli_args.jobs,
+        initializer=pool_initializer,
+        initargs=(cli_args,),
+        **kwargs
+    )
+
+
+__all__ = ('hash_file', 'parse_checksums', 'download_file', 'url_text_content', 'Everything', 'configure_logging',
+           'process_pool',)

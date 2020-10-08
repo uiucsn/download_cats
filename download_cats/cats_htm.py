@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 from astropy.io import ascii
 import requests
 
+from download_cats.base import BaseFetcher
 from download_cats.utils import *
 
 
@@ -15,7 +16,7 @@ HTML_TABLE_NAME = 'catsHTM_catalogs.html'
 
 def get_catalog_list(dest):
     url = urljoin(BASE_URL, HTML_TABLE_NAME)
-    logging.info('Downloading catalog table HTML')
+    logging.info('Downloading catalog HTML table')
     table = ascii.read(url, format='html')
     table['dest'] = [os.path.join(dest, name) for name in table['Name']]
     table['wget_url'] = [urljoin(BASE_URL, file) for file in table['wget file']]
@@ -42,13 +43,36 @@ def download_catalog(name, dest, wget_url, checksum_url):
         download_file(url, path, checksum=checksums[filename], session=session)
 
 
-def fetcher(cli_args):
-    logging.info(f'Fetching catsHTM catalogues')
-    table = get_catalog_list(cli_args.dir)
-    args = table[['Name', 'dest', 'wget_url', 'checksum_url']]
+class CatsHTMFetcher(BaseFetcher):
+    catalog_name = 'HTM'
 
-    with Pool(processes=cli_args.jobs) as pool:
-        pool.starmap(download_catalog, args.iterrows(), chunksize=1)
+    def __init__(self, cli_args):
+        super().__init__(cli_args)
+        self.dest = cli_args.dir
+        self.processes = cli_args.jobs
+
+        self.catalogs = frozenset(cli_args.cat)
+        if 'all' in self.catalogs:
+            self.catalogs = Everything()
+
+    def __call__(self):
+        logging.info(f'Fetching catsHTM catalogues')
+        table = get_catalog_list(self.dest)
+        args = table[['Name', 'dest', 'wget_url', 'checksum_url']]
+
+        with process_pool(self.cli_args) as pool:
+            pool.starmap(
+                download_catalog,
+                (x for x in args.iterrows() if x[0].lower() in self.catalogs),
+                chunksize=1,
+            )
+
+    @staticmethod
+    def add_arguments_to_parser(parser):
+        parser.add_argument('-c', '--cat', default=['all'], type=str.lower, nargs='+',
+                            help=('HTM catalogs to download, "All" (default) means download all catalogs, see full '
+                                  'list on the catsHTM homepage: '
+                                  'https://euler1.weizmann.ac.il/catsHTM/catsHTM_catalogs.html'))
 
 
-__all__ = ('fetcher',)
+__all__ = ('CatsHTMFetcher',)

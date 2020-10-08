@@ -1,6 +1,4 @@
-from . import cats_htm, ztf_dr_lc
+from . import base, cats_htm, ztf_dr_lc, utils
 
-FETCHERS = {
-    'catshtm': cats_htm.fetcher,
-    'ztf': ztf_dr_lc.fetcher,
-}
+
+FETCHERS = {cls.catalog_name.lower(): cls for cls in utils.subclasses(base.BaseFetcher)}
