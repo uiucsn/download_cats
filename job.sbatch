@@ -27,8 +27,8 @@
 module load python/3
 export PYTHONPATH="$HOME/.local/lib/python3.7/site-packages:$PYTHONPATH"
 
-SCRIPT="$HOME/download_catsHTM/download_catsHTM.py"
+PROJECT_DIR="$HOME/download_cats/"
 DEST="/projects/caps/uiucsn/catsHTM"
 
-cd $DEST
-python3 $SCRIPT
+cd $PROJECT_DIR
+python3 -m download_cats catsHTM -d "$DEST"
