@@ -1,4 +1,2 @@
-numpy
-astropy
-BeautifulSoup4
-requests
+-r download_cats/requirements.txt
+-r put_cat_to_ch/requirements.txt

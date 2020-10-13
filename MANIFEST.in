@@ -1,0 +1,5 @@
+include requirements.txt
+include download_cats/requirements.txt
+include put_cat_to_ch/requirements.txt
+include put_cat_to_ch/ztf/sh/*.sh
+include put_cat_to_ch/ztf/sql/*.sql
