@@ -138,7 +138,7 @@ class ZtfPutter:
         path_template = os.path.join(self.data_dir, 'field*.tar.gz')
         file_paths = sorted(glob(path_template))
         with ThreadPool(self.processes) as pool:
-            pool.map(self.insert_data_into_obs_table_worker, file_paths)
+            pool.map(self.insert_data_into_obs_table_worker, file_paths, chunksize=1)
 
     def insert_data_into_obs_meta_table(self):
         self.exe_query(
