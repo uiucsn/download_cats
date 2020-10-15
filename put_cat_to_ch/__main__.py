@@ -15,6 +15,10 @@ def parse_args():
     parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
                         help='what to do when some of tables to create already exists, "fail" terminates the program, '
                              '"keep" does nothing, and "drop" recreates the table')
+    parser.add_argument('-a', '--action', default={'insert-obs', 'insert-meta'}, type=str.lower, nargs='+',
+                        choices={'insert-obs', 'insert-meta'},
+                        help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
+                             'the same for meta table assuming that "insert_obs" was performed earlier')
     args = parser.parse_args()
     return args
 
@@ -36,7 +40,7 @@ def main():
     configure_logging(cli_args)
 
     putter = ZtfPutter(**vars(cli_args))
-    putter()
+    putter(cli_args.action)
 
 
 if __name__ == '__main__':

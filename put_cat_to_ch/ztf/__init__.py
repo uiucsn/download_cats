@@ -149,9 +149,11 @@ class ZtfPutter:
             obs_table=self.obs_table,
         )
 
-    def __call__(self):
-        self.create_db()
-        self.create_obs_table(on_exists=self.on_exists)
-        self.insert_data_into_obs_table()
-        self.create_obs_meta_table(on_exists=self.on_exists)
-        self.insert_data_into_obs_meta_table()
+    def __call__(self, actions):
+        if 'insert-obs' in actions:
+            self.create_db()
+            self.create_obs_table(on_exists=self.on_exists)
+            self.insert_data_into_obs_table()
+        if 'insert-meta' in actions:
+            self.create_obs_meta_table(on_exists=self.on_exists)
+            self.insert_data_into_obs_meta_table()
