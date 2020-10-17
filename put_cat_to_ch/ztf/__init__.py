@@ -22,8 +22,15 @@ class ZtfPutter:
         self.host = host
         self.processes = jobs
         self.on_exists = on_exists
-        url = f'clickhouse://{self.user}@{self.host}/'
-        self.client = Client.from_url(url)
+        self.client = Client(
+            host=self.host,
+            database=self.db,
+            user=self.user,
+            settings={
+                'max_bytes_before_external_group_by': 1 << 31,
+                'aggregation_memory_efficient_merge_threads': 1,
+            }
+        )
 
     @staticmethod
     def get_query(filename: str, **format_kwargs: str) -> str:
