@@ -10,6 +10,10 @@ DEFAULT_READ_CHUNK = 1 << 14
 DEFAULT_DOWNLOAD_CHUNK = 1 << 14
 
 
+class HashSumCheckFailed(RuntimeError):
+    pass
+
+
 def hash_file(path, chink_size=DEFAULT_READ_CHUNK):
     """Returns hex md5 checksum of file"""
     if not os.path.exists(path):
@@ -49,10 +53,11 @@ class FileDownloader:
 
     chunk_size = DEFAULT_DOWNLOAD_CHUNK
 
-    def __init__(self, url, path, checksum=None, session=None):
+    def __init__(self, url, path, checksum=None, session=None, retries=1):
         self.url = url
         self.path = path
         self.session = session or requests
+        self.retries = retries
         self.checksum = checksum
         if self.checksum is not None:
             self.md5 = md5()
@@ -60,7 +65,7 @@ class FileDownloader:
         else:
             self.write = self._write
 
-    def __enter__(self):
+    def download(self):
         logging.info(f'Downloading {self.url} to {self.path}')
         self.fh = open(self.path, 'wb')
         self.resp = self.session.get(self.url, stream=True)
@@ -70,7 +75,15 @@ class FileDownloader:
         if self.checksum is not None and self.checksum != self.md5.digest().hex():
             msg = f'md5 checksum mismatch for {self.url}'
             logging.warning(msg)
-            raise RuntimeError(msg)
+            raise HashSumCheckFailed(msg)
+
+    def __enter__(self):
+        for _ in range(self.retries):
+            try:
+                return self.download()
+            except HashSumCheckFailed as e:
+                pass
+        raise e
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.fh.close()
@@ -84,7 +97,7 @@ class FileDownloader:
         self.md5.update(chunk)
 
 
-def download_file(url, path, checksum, session=None):
+def download_file(url, path, checksum, session=None, retries=1):
     """Download file and optionally checks its md5 checksum
 
     See call signature in `FileDownloader`
@@ -98,7 +111,7 @@ def download_file(url, path, checksum, session=None):
         if checksum == hash_file(path):
             logging.info(f'File {path} exists and checksum matches')
             return False
-    with FileDownloader(url, path, checksum=checksum, session=session):
+    with FileDownloader(url, path, checksum=checksum, session=session, retries=retries):
         return True
 
 

@@ -40,7 +40,7 @@ def download_catalog(name, dest, wget_url, checksum_url):
 
     for filename, url in urls.items():
         path = os.path.join(dest, filename)
-        download_file(url, path, checksum=checksums[filename], session=session)
+        download_file(url, path, checksum=checksums[filename], session=session, retries=3)
 
 
 class CatsHTMFetcher(BaseFetcher):
