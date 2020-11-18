@@ -16,12 +16,13 @@ class ZtfPutter:
     obs_table = 'dr3_obs'
     meta_table = 'dr3_meta'
 
-    def __init__(self, *, dir, user, host, jobs, on_exists, **_kwargs):
+    def __init__(self, *, dir, user, host, jobs, on_exists, radius, **_kwargs):
         self.data_dir = dir
         self.user = user
         self.host = host
         self.processes = jobs
         self.on_exists = on_exists
+        self.radius_arcsec = radius
         self.client = Client(
             host=self.host,
             database=self.db,
@@ -31,6 +32,18 @@ class ZtfPutter:
                 'aggregation_memory_efficient_merge_threads': 1,
             }
         )
+
+    @property
+    def radius_table_suffix(self):
+        return f'{self.radius_arcsec:.2f}'.replace('.', '').strip('0')
+
+    @property
+    def xmatch_table(self):
+        return f'dr3_xmatch_{self.radius_table_suffix}'
+
+    @property
+    def lc_table(self):
+        return f'dr3_lc_{self.radius_table_suffix}'
 
     @staticmethod
     def get_query(filename: str, **format_kwargs: str) -> str:
@@ -156,6 +169,39 @@ class ZtfPutter:
             obs_table=self.obs_table,
         )
 
+    def create_xmatch_table(self, on_exists: str = 'fail'):
+        """Create self cross-match table"""
+        exists_ok = self.process_on_exists(on_exists, self.xmatch_table)
+        self.exe_query(
+            'create_xmatch_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            xmatch_db=self.db,
+            xmatch_table=self.xmatch_table,
+            meta_db=self.db,
+            meta_table=self.meta_table,
+            radius_arcsec=self.radius_arcsec,
+        )
+
+    def create_lc_table(self, on_exists: str = 'fail'):
+        exists_ok = self.process_on_exists(on_exists, self.lc_table)
+        self.exe_query(
+            'create_lc_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            lc_db=self.db,
+            lc_table=self.lc_table,
+        )
+
+    def insert_data_into_lc_table(self, on_exists: str = 'fail'):
+        self.exe_query(
+            'insert_into_lc_table.sql',
+            lc_db=self.db,
+            lc_table=self.lc_table,
+            obs_db=self.db,
+            obs_table=self.obs_table,
+            xmatch_db=self.db,
+            xmatch_table=self.xmatch_table,
+        )
+
     def __call__(self, actions):
         if 'insert-obs' in actions:
             self.create_db()
@@ -164,3 +210,8 @@ class ZtfPutter:
         if 'insert-meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
             self.insert_data_into_obs_meta_table()
+        if 'xmatch' in actions:
+            self.create_xmatch_table(on_exists=self.on_exists)
+        if 'insert-lc' in actions:
+            self.create_lc_table(on_exists=self.on_exists)
+            self.insert_data_into_lc_table()
