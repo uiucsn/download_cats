@@ -68,7 +68,7 @@ class FileDownloader:
         for chunk in self.resp.iter_content(chunk_size=self.chunk_size):
             self.write(chunk)
         if self.checksum is not None and self.checksum != self.md5.digest().hex():
-            msg = 'md5 checksum mismatch'
+            msg = f'md5 checksum mismatch for {self.url}'
             logging.warning(msg)
             raise RuntimeError(msg)
 
