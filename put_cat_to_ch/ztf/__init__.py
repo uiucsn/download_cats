@@ -6,6 +6,7 @@ from multiprocessing.pool import ThreadPool
 from subprocess import check_call
 from typing import Dict, List, Tuple
 
+import psutil
 from clickhouse_driver import Client
 
 from put_cat_to_ch.ztf import sh, sql
@@ -28,8 +29,8 @@ class ZtfPutter:
             database=self.db,
             user=self.user,
             settings={
-                'max_bytes_before_external_group_by': 1 << 31,
-                'aggregation_memory_efficient_merge_threads': 1,
+                'max_bytes_before_external_group_by': psutil.virtual_memory().total / os.cpu_count() / 4,
+                # 'aggregation_memory_efficient_merge_threads': 1,
             }
         )
 
