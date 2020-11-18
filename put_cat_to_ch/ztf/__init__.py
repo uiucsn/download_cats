@@ -29,7 +29,7 @@ class ZtfPutter:
             database=self.db,
             user=self.user,
             settings={
-                'max_bytes_before_external_group_by': psutil.virtual_memory().total / os.cpu_count() / 4,
+                'max_bytes_before_external_group_by': 1 << 34,
                 # 'aggregation_memory_efficient_merge_threads': 1,
             }
         )
