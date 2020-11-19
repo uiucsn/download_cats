@@ -9,12 +9,14 @@ INNER JOIN
         oid1,
         oid2
     FROM {xmatch_db}.{xmatch_table}
-    WHERE (oid1 = oid2) OR (oid1 NOT IN
-    (
-        SELECT oid2
-        FROM {xmatch_db}.{xmatch_table}
-        WHERE oid1 != oid2
-    ))
+    WHERE (oid1 = oid2) OR (
+        (oid1 < oid2) AND (oid1 NOT IN
+        (
+            SELECT oid2
+            FROM {xmatch_db}.{xmatch_table}
+            WHERE oid1 < oid2
+        ))
+    )
 ) AS match ON match.oid2 = obs.oid
 WHERE (obs.catflags = 0) AND (obs.magerr > 0)
 GROUP BY match.oid1

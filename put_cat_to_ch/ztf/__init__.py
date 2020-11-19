@@ -6,7 +6,6 @@ from multiprocessing.pool import ThreadPool
 from subprocess import check_call
 from typing import Dict, List, Tuple
 
-import psutil
 from clickhouse_driver import Client
 
 from put_cat_to_ch.ztf import sh, sql
