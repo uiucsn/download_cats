@@ -2,6 +2,7 @@ import logging
 import os
 from hashlib import md5
 from multiprocessing import Pool
+from time import sleep
 
 import requests
 
@@ -83,6 +84,8 @@ class FileDownloader:
                 return self.download()
             except HashSumCheckFailed as e:
                 pass
+            except requests.exceptions.RequestException as e:
+                sleep(1)
         raise e
 
     def __exit__(self, exc_type, exc_value, traceback):
