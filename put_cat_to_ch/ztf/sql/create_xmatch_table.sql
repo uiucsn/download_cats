@@ -1,6 +1,6 @@
 CREATE TABLE {if_not_exists} {xmatch_db}.{xmatch_table}
 ENGINE = MergeTree
-ORDER BY (oid1, oid2) AS
+ORDER BY oid1 AS
 SELECT
     oid1,
     argMin(oid2, distance) AS oid2
