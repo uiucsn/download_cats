@@ -4,8 +4,9 @@ import os
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from subprocess import check_call
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Iterable, Optional
 
+import numpy as np
 from clickhouse_driver import Client
 
 from put_cat_to_ch.ztf import sh, sql
@@ -15,6 +16,7 @@ class ZtfPutter:
     db = 'ztf'
     obs_table = 'dr3_obs'
     meta_table = 'dr3_meta'
+    circle_table_parts = 16
 
     def __init__(self, *, dir, user, host, jobs, on_exists, radius, **_kwargs):
         self.data_dir = dir
@@ -29,13 +31,19 @@ class ZtfPutter:
             user=self.user,
             settings={
                 'max_bytes_before_external_group_by': 1 << 34,
-                # 'aggregation_memory_efficient_merge_threads': 1,
+                # 'join_algorithm': 'auto',
+                # 'default_max_bytes_in_join': 1 << 35,
+                'aggregation_memory_efficient_merge_threads': 1,
             }
         )
 
     @property
     def radius_table_suffix(self):
-        return f'{self.radius_arcsec:.2f}'.replace('.', '').strip('0')
+        return f'{self.radius_arcsec:.2f}'.replace('.', '').rstrip('0')
+
+    @property
+    def circle_match_table(self):
+        return f'dr3_circle_match_{self.radius_table_suffix}'
 
     @property
     def xmatch_table(self):
@@ -169,17 +177,85 @@ class ZtfPutter:
             obs_table=self.obs_table,
         )
 
+    def create_circle_table(self, on_exists: str = 'fail'):
+        """Create self-match table for circle search
+
+        It will be used to create xmatch table
+        """
+        exists_ok = self.process_on_exists(on_exists, self.circle_match_table)
+        self.exe_query(
+            'create_circle_match_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.circle_match_table,
+        )
+
+    def get_min_max(self, column: str, *, db: Optional[str] = None, table: str):
+        if db is None:
+            db = self.db
+        query = f'SELECT min({column}), max({column}) FROM {db}.{table}'
+        result = self.client.execute(query)
+        return result[0]
+
+    def get_min_max_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str):
+        if db is None:
+            db = self.db
+        levels_str = ', '.join(map(str, levels))
+        query = f'''
+        SELECT
+            min({column}),
+            max({column}),
+            quantiles({levels_str})({column})
+        FROM {db}.{table}
+        '''
+        result = self.client.execute(query)
+        return result[0]
+
+    def _insert_data_into_circle_table(self, begin_oid, end_oid):
+        self.exe_query(
+            'insert_into_circle_match_table.sql',
+            circle_db=self.db,
+            circle_table=self.circle_match_table,
+            radius_arcsec=self.radius_arcsec,
+            meta_db=self.db,
+            meta_table=self.meta_table,
+            begin_oid=begin_oid,
+            end_oid=end_oid,
+        )
+
+    def insert_data_into_circle_table(self, parts=1):
+        if parts < 1:
+            msg = f'parts should be positive, not {parts}'
+            logging.warning(msg)
+            raise ValueError(msg)
+        if parts == 1:
+            min_oid, max_oid = self.get_min_max(column='oid', table=self.meta_table)
+            grid = np.array([min_oid, max_oid + 1])
+        else:
+            levels = np.linspace(0, 1, parts, endpoint=False)[1:]
+            min_oid, max_oid, q = self.get_min_max_quantiles(column='oid', levels=levels, table=self.meta_table)
+            grid = np.r_[min_oid, q, max_oid + 1]
+        assert np.all(np.diff(grid) > 0), 'grid must be monotonically increasing'
+        for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
+            self._insert_data_into_circle_table(begin_oid, end_oid)
+
     def create_xmatch_table(self, on_exists: str = 'fail'):
         """Create self cross-match table"""
         exists_ok = self.process_on_exists(on_exists, self.xmatch_table)
         self.exe_query(
             'create_xmatch_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.xmatch_table,
+        )
+
+    def insert_into_xmatch_table(self):
+        self.exe_query(
+            'insert_into_xmatch_table.sql',
             xmatch_db=self.db,
             xmatch_table=self.xmatch_table,
-            meta_db=self.db,
-            meta_table=self.meta_table,
-            radius_arcsec=self.radius_arcsec,
+            circle_db=self.db,
+            circle_table=self.circle_match_table,
         )
 
     def create_lc_table(self, on_exists: str = 'fail'):
@@ -209,9 +285,13 @@ class ZtfPutter:
             self.insert_data_into_obs_table()
         if 'insert-meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
+            self.insert_data_into_circle_table(parts=self.circle_table_parts)
             self.insert_data_into_obs_meta_table()
         if 'xmatch' in actions:
+            self.create_circle_table(on_exists=self.on_exists)
+            self.insert_data_into_circle_table(parts=self.circle_table_parts)
             self.create_xmatch_table(on_exists=self.on_exists)
+            self.insert_into_xmatch_table()
         if 'insert-lc' in actions:
             self.create_lc_table(on_exists=self.on_exists)
             self.insert_data_into_lc_table()

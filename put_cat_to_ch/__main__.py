@@ -19,7 +19,7 @@ def parse_args():
                         nargs='+', choices={'insert-obs', 'insert-meta', 'xmatch', 'insert-lc'},
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')
-    parser.add_argument('-r', '--radius', default=1.0, type=float, help='cross-match radius, arcsec')
+    parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
     args = parser.parse_args()
     return args
 
