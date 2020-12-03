@@ -16,15 +16,15 @@ class ZtfPutter:
     db = 'ztf'
     obs_table = 'dr3_obs'
     meta_table = 'dr3_meta'
-    circle_table_parts = 16
 
-    def __init__(self, *, dir, user, host, jobs, on_exists, radius, **_kwargs):
+    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, **_kwargs):
         self.data_dir = dir
         self.user = user
         self.host = host
         self.processes = jobs
         self.on_exists = on_exists
         self.radius_arcsec = radius
+        self.circle_table_parts = circle_match_insert_parts
         self.client = Client(
             host=self.host,
             database=self.db,
@@ -285,7 +285,6 @@ class ZtfPutter:
             self.insert_data_into_obs_table()
         if 'insert-meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
-            self.insert_data_into_circle_table(parts=self.circle_table_parts)
             self.insert_data_into_obs_meta_table()
         if 'xmatch' in actions:
             self.create_circle_table(on_exists=self.on_exists)

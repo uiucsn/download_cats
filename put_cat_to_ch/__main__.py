@@ -20,6 +20,9 @@ def parse_args():
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')
     parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
+    parser.add_argument('--circle-match-insert-parts', default=1, type=int,
+                        help='specifies the number of parts to split meta table to perform insert into circle-match '
+                             'table, less parts require less time, but more memory')
     args = parser.parse_args()
     return args
 
