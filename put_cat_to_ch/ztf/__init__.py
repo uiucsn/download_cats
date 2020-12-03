@@ -289,9 +289,10 @@ class ZtfPutter:
         if 'insert-meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
             self.insert_data_into_obs_meta_table()
-        if 'xmatch' in actions:
+        if 'circle' in actions:
             self.create_circle_table(on_exists=self.on_exists)
             self.insert_data_into_circle_table(parts=self.circle_table_parts)
+        if 'xmatch' in actions:
             self.create_xmatch_table(on_exists=self.on_exists)
             self.insert_into_xmatch_table()
         if 'insert-lc' in actions:
