@@ -34,7 +34,10 @@ class ZtfPutter:
                 # 'join_algorithm': 'auto',
                 # 'default_max_bytes_in_join': 1 << 35,
                 'aggregation_memory_efficient_merge_threads': 1,
-            }
+            },
+            connect_timeout=86400,
+            send_receive_timeout=86400,
+            sync_request_timeout=86400,
         )
 
     @property
