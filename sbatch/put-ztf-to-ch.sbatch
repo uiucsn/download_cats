@@ -10,10 +10,11 @@
 ##                                                                           ##
 ###############################################################################
 #                                                                            
-#SBATCH --time=21:00:00                  # Job run time (hh:mm:ss)
+#SBATCH --time=24:00:00                  # Job run time (hh:mm:ss)
 #SBATCH --nodes=1                        # Number of nodes
 #SBATCH --ntasks-per-node=1              # Number of task (cores/ppn) per node
-#SBATCH --cpus-per-task=20               # Number of cpu cores per task
+#SBATCH --cpus-per-task=2                # Number of cpu cores per task
+#SBATCH --mem=192G                       # RAM per node
 #SBATCH --job-name=put-ztf-to-ch         # Name of batch job
 #SBATCH --partition=ncsa                 # Partition (queue)           
 #SBATCH --mail-user=kostya@illinois.edu  # Send email notifications
@@ -49,7 +50,7 @@ export PYTHONPATH="$HOME/.local/lib/python3.7/site-packages:$PYTHONPATH"
 
 cd "$PROJECT_ROOT"
 pip3 install --user -r requirements.txt
-python3 -m put_cat_to_ch -vvv -d "$DATA_ROOT" -j10 -e drop
+python3 -m put_cat_to_ch -vvv -d "$DATA_ROOT" -a xmatch --circle-match-insert-parts=2 -e drop
 
 
 #################################
