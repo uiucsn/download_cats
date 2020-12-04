@@ -25,8 +25,8 @@ class ZtfPutter:
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, clickhouse_settings,
-                 **_kwargs):
+    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, lc_insert_parts,
+                 clickhouse_settings, **_kwargs):
         self.data_dir = dir
         self.user = user
         self.host = host
@@ -34,6 +34,7 @@ class ZtfPutter:
         self.on_exists = on_exists
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
+        self.lc_insert_parts = lc_insert_parts
         self.settings = self._default_settings
         self.settings.update(clickhouse_settings)
         self.client = Client(
@@ -206,47 +207,54 @@ class ZtfPutter:
         result = self.client.execute(query)
         return result[0]
 
-    def get_min_max_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str):
+    def get_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str):
         if db is None:
             db = self.db
         levels_str = ', '.join(map(str, levels))
         query = f'''
         SELECT
-            min({column}),
-            max({column}),
             quantiles({levels_str})({column})
         FROM {db}.{table}
         '''
         result = self.client.execute(query)
-        return result[0]
+        return result[0][0]
 
-    def _insert_data_into_circle_table(self, begin_oid, end_oid):
-        self.exe_query(
-            'insert_into_circle_match_table.sql',
-            circle_db=self.db,
-            circle_table=self.circle_match_table,
-            radius_arcsec=self.radius_arcsec,
-            meta_db=self.db,
-            meta_table=self.meta_table,
-            begin_oid=begin_oid,
-            end_oid=end_oid,
-        )
+    # Improve typing when numpy 1.20 will arrive
+    def construct_quantile_grid(self, parts: int, **kwargs) -> np.ndarray:
+        """Create grid to split some column data range to
 
-    def insert_data_into_circle_table(self, parts=1):
+        Parameters
+        ----------
+        parts : int
+            Positive number. If zero, then [-INF, +INF] is returned
+        **kwargs
+            All arguments of `get_min_max_quantiles` but `levels`
+        """
         if parts < 1:
             msg = f'parts should be positive, not {parts}'
             logging.warning(msg)
             raise ValueError(msg)
         if parts == 1:
-            min_oid, max_oid = self.get_min_max(column='oid', table=self.meta_table)
-            grid = np.array([min_oid, max_oid + 1])
-        else:
-            levels = np.linspace(0, 1, parts, endpoint=False)[1:]
-            min_oid, max_oid, q = self.get_min_max_quantiles(column='oid', levels=levels, table=self.meta_table)
-            grid = np.r_[min_oid, q, max_oid + 1]
-        assert np.all(np.diff(grid) > 0), 'grid must be monotonically increasing'
+            return np.array([-np.inf, np.inf])
+        levels = np.linspace(0, 1, parts, endpoint=False)[1:]
+        q = self.get_quantiles(levels=levels, **kwargs)
+        assert np.all(np.diff(q) > 0), 'quantiles must be monotonically increasing'
+        grid = np.r_[-np.inf, q, np.inf]
+        return grid
+
+    def insert_data_into_circle_table(self, parts: int = 1):
+        grid = self.construct_quantile_grid(parts, column='oid', table=self.meta_table)
         for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
-            self._insert_data_into_circle_table(begin_oid, end_oid)
+            self.exe_query(
+                'insert_into_circle_match_table.sql',
+                circle_db=self.db,
+                circle_table=self.circle_match_table,
+                radius_arcsec=self.radius_arcsec,
+                meta_db=self.db,
+                meta_table=self.meta_table,
+                begin_oid=begin_oid,
+                end_oid=end_oid,
+            )
 
     def create_xmatch_table(self, on_exists: str = 'fail'):
         """Create self cross-match table"""
@@ -276,23 +284,27 @@ class ZtfPutter:
             lc_table=self.lc_table,
         )
 
-    def insert_data_into_lc_table(self, on_exists: str = 'fail'):
-        self.exe_query(
-            'insert_into_lc_table.sql',
-            lc_db=self.db,
-            lc_table=self.lc_table,
-            obs_db=self.db,
-            obs_table=self.obs_table,
-            xmatch_db=self.db,
-            xmatch_table=self.xmatch_table,
-        )
+    def insert_data_into_lc_table(self, parts: int = 1):
+        grid = self.construct_quantile_grid(parts, column='oid1', table=self.circle_match_table)
+        for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
+            self.exe_query(
+                'insert_into_lc_table.sql',
+                lc_db=self.db,
+                lc_table=self.lc_table,
+                obs_db=self.db,
+                obs_table=self.obs_table,
+                xmatch_db=self.db,
+                xmatch_table=self.xmatch_table,
+                begin_oid=begin_oid,
+                end_oid=end_oid,
+            )
 
     def __call__(self, actions):
-        if 'insert-obs' in actions:
+        if 'obs' in actions:
             self.create_db()
             self.create_obs_table(on_exists=self.on_exists)
             self.insert_data_into_obs_table()
-        if 'insert-meta' in actions:
+        if 'meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
             self.insert_data_into_obs_meta_table()
         if 'circle' in actions:
@@ -301,6 +313,6 @@ class ZtfPutter:
         if 'xmatch' in actions:
             self.create_xmatch_table(on_exists=self.on_exists)
             self.insert_into_xmatch_table()
-        if 'insert-lc' in actions:
+        if 'lc' in actions:
             self.create_lc_table(on_exists=self.on_exists)
-            self.insert_data_into_lc_table()
+            self.insert_data_into_lc_table(parts=self.lc_insert_parts)
