@@ -17,7 +17,16 @@ class ZtfPutter:
     obs_table = 'dr3_obs'
     meta_table = 'dr3_meta'
 
-    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, **_kwargs):
+    _default_settings = {
+        'max_bytes_before_external_group_by': 1 << 34,
+        # 'join_algorithm': 'auto',
+        # 'default_max_bytes_in_join': 1 << 35,
+        'aggregation_memory_efficient_merge_threads': 1,
+        # 'max_threads': 1,
+    }
+
+    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, clickhouse_settings,
+                 **_kwargs):
         self.data_dir = dir
         self.user = user
         self.host = host
@@ -25,16 +34,13 @@ class ZtfPutter:
         self.on_exists = on_exists
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
+        self.settings = self._default_settings
+        self.settings.update(clickhouse_settings)
         self.client = Client(
             host=self.host,
             database=self.db,
             user=self.user,
-            settings={
-                'max_bytes_before_external_group_by': 1 << 34,
-                # 'join_algorithm': 'auto',
-                # 'default_max_bytes_in_join': 1 << 35,
-                'aggregation_memory_efficient_merge_threads': 1,
-            },
+            settings=self.settings,
             connect_timeout=86400,
             send_receive_timeout=86400,
             sync_request_timeout=86400,

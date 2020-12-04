@@ -4,6 +4,11 @@ import logging
 from put_cat_to_ch import ZtfPutter
 
 
+def parse_clickhouse_settings(s):
+    settings = dict(map(str.strip, pair.split('=')) for pair in s.split(','))
+    return settings
+
+
 def parse_args():
     parser = ArgumentParser('Put astronomical catalogue to ClickHouse')
     parser.add_argument('-d', '--dir', default='.', help='directory containing data files')
@@ -24,6 +29,8 @@ def parse_args():
     parser.add_argument('--circle-match-insert-parts', default=1, type=int,
                         help='specifies the number of parts to split meta table to perform insert into circle-match '
                              'table, less parts require less time, but more memory')
+    parser.add_argument('-c', '--clickhouse-settings', default={}, type=parse_clickhouse_settings,
+                        help='additional settings for clickhouse server, format as "key1=value1,key2=value2"')
     args = parser.parse_args()
     return args
 
@@ -43,6 +50,7 @@ def configure_logging(cli_args):
 def main():
     cli_args = parse_args()
     configure_logging(cli_args)
+    logging.info(cli_args)
 
     putter = ZtfPutter(**vars(cli_args))
     putter(cli_args.action)
