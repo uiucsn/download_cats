@@ -9,7 +9,7 @@ INNER JOIN
         oid1,
         oid2
     FROM {xmatch_db}.{xmatch_table}
-    WHERE (oid1 = oid2) AND (oid1 NOT IN
+    WHERE (oid1 <= oid2) AND (oid1 NOT IN
         (
             SELECT oid2
             FROM {xmatch_db}.{xmatch_table}
