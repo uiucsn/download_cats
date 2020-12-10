@@ -66,8 +66,15 @@ class FileDownloader:
         else:
             self.write = self._write
 
+    def _create_dir(self):
+        abspath = os.path.abspath(self.path)
+        dirpath = os.path.dirname(abspath)
+        logging.info(f"Creating {dirpath} directory if it doesn't exist")
+        os.makedirs(dirpath, exist_ok=True)
+
     def download(self):
         logging.info(f'Downloading {self.url} to {self.path}')
+        self._create_dir()
         self.fh = open(self.path, 'wb')
         self.resp = self.session.get(self.url, stream=True)
         self.resp.raise_for_status()
