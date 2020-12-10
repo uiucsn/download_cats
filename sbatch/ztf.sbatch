@@ -10,11 +10,11 @@
 ##                                                                           ##
 ###############################################################################
 #                                                                            
-#SBATCH --time=10:00:00                  # Job run time (hh:mm:ss)
+#SBATCH --time=24:00:00                  # Job run time (hh:mm:ss)
 #SBATCH --nodes=1                        # Number of nodes
 #SBATCH --ntasks-per-node=1              # Number of task (cores/ppn) per node
-#SBATCH --cpus-per-task=1                # Number of cpu cires per task
-#SBATCH --job-name=download_ztf_dr3      # Name of batch job
+#SBATCH --cpus-per-task=4                # Number of cpu cires per task
+#SBATCH --job-name=download_catsHTM      # Name of batch job
 #SBATCH --partition=ncsa                 # Partition (queue)           
 #SBATCH --mail-user=kostya@illinois.edu  # Send email notifications
 #SBATCH --mail-type=BEGIN,END            # Type of email notifications to send
@@ -27,8 +27,8 @@
 module load python/3
 export PYTHONPATH="$HOME/.local/lib/python3.7/site-packages:$PYTHONPATH"
 
-PROJECT_ROOT="$HOME/download_cats/"
-DEST="/projects/caps/uiucsn/ztf_dr/lc_dr3"
+PROJECT_DIR="$HOME/download_cats/"
+DEST="/projects/caps/uiucsn/ztf_dr/lc_dr4"
 
-cd "$PROJECT_ROOT"
-python3 -m download_cats -vvv -d "$DEST" -j16 ztf
+cd $PROJECT_DIR
+python3 -m download_cats -vvv -d "$DEST" -j8 ztf --dr 4
