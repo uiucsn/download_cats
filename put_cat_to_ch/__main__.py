@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 import logging
 
 from put_cat_to_ch import ZtfPutter
+from put_cat_to_ch.ztf import CURRENT_ZTF_DR
 
 
 def parse_clickhouse_settings(s):
@@ -12,6 +13,7 @@ def parse_clickhouse_settings(s):
 def parse_args():
     parser = ArgumentParser('Put astronomical catalogue to ClickHouse')
     parser.add_argument('-d', '--dir', default='.', help='directory containing data files')
+    parser.add_argument('--dr', default=CURRENT_ZTF_DR, help='ZTF DR number')
     parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel job to run')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='logging verbosity')
     parser.add_argument('-u', '--user', default='default', help='ClickHouse username')

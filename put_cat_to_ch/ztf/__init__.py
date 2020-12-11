@@ -12,10 +12,11 @@ from clickhouse_driver import Client
 from put_cat_to_ch.ztf import sh, sql
 
 
+CURRENT_ZTF_DR = 4
+
+
 class ZtfPutter:
     db = 'ztf'
-    obs_table = 'dr3_obs'
-    meta_table = 'dr3_meta'
 
     _default_settings = {
         'max_bytes_before_external_group_by': 1 << 34,
@@ -25,9 +26,10 @@ class ZtfPutter:
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, user, host, jobs, on_exists, radius, circle_match_insert_parts, lc_insert_parts,
+    def __init__(self, *, dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts, lc_insert_parts,
                  clickhouse_settings, **_kwargs):
         self.data_dir = dir
+        self.dr = dr
         self.user = user
         self.host = host
         self.processes = jobs
@@ -52,16 +54,24 @@ class ZtfPutter:
         return f'{self.radius_arcsec:.2f}'.replace('.', '').rstrip('0')
 
     @property
+    def obs_table(self):
+        return f'dr{self.dr:d}_obs'
+
+    @property
+    def meta_table(self):
+        return f'dr{self.dr:d}_meta'
+
+    @property
     def circle_match_table(self):
-        return f'dr3_circle_match_{self.radius_table_suffix}'
+        return f'dr{self.dr:d}_circle_match_{self.radius_table_suffix}'
 
     @property
     def xmatch_table(self):
-        return f'dr3_xmatch_{self.radius_table_suffix}'
+        return f'dr{self.dr:d}_xmatch_{self.radius_table_suffix}'
 
     @property
     def lc_table(self):
-        return f'dr3_lc_{self.radius_table_suffix}'
+        return f'dr{self.dr:d}_lc_{self.radius_table_suffix}'
 
     @staticmethod
     def get_query(filename: str, **format_kwargs: str) -> str:
