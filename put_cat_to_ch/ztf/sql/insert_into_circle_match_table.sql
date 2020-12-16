@@ -4,6 +4,8 @@ INSERT INTO {circle_db}.{circle_table} SELECT
     ring.oid AS oid2,
     ring.filter AS filter2,
     ring.fieldid AS fieldid2,
+    ring.ra AS ra,
+    ring.dec AS dec,
     greatCircleAngle(meta.ra, meta.dec, ring.ra, ring.dec) AS distance_deg
 FROM {meta_db}.{meta_table} AS ring
 INNER JOIN

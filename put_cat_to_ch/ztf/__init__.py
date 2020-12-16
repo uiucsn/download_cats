@@ -26,8 +26,8 @@ class ZtfPutter:
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts, lc_insert_parts,
-                 clickhouse_settings, **_kwargs):
+    def __init__(self, *, dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts,
+                 source_obs_insert_parts, clickhouse_settings, **_kwargs):
         self.data_dir = dir
         self.dr = dr
         self.user = user
@@ -36,7 +36,7 @@ class ZtfPutter:
         self.on_exists = on_exists
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
-        self.lc_insert_parts = lc_insert_parts
+        self.source_obs_table_parts = source_obs_insert_parts
         self.settings = self._default_settings
         self.settings.update(clickhouse_settings)
         self.client = Client(
@@ -70,8 +70,12 @@ class ZtfPutter:
         return f'dr{self.dr:d}_xmatch_{self.radius_table_suffix}'
 
     @property
-    def lc_table(self):
-        return f'dr{self.dr:d}_lc_{self.radius_table_suffix}'
+    def source_obs_table(self):
+        return f'dr{self.dr:d}_source_obs_{self.radius_table_suffix}'
+
+    @property
+    def source_meta_table(self):
+        return f'dr{self.dr:d}_source_meta_{self.radius_table_suffix}'
 
     @staticmethod
     def get_query(filename: str, **format_kwargs: str) -> str:
@@ -285,22 +289,23 @@ class ZtfPutter:
             circle_table=self.circle_match_table,
         )
 
-    def create_lc_table(self, on_exists: str = 'fail'):
-        exists_ok = self.process_on_exists(on_exists, self.lc_table)
+    def create_source_obs_table(self, on_exists: str = 'fail'):
+        """Create self cross-match table"""
+        exists_ok = self.process_on_exists(on_exists, self.source_obs_table)
         self.exe_query(
-            'create_lc_table.sql',
+            'create_source_obs_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
-            lc_db=self.db,
-            lc_table=self.lc_table,
+            db=self.db,
+            table=self.source_obs_table,
         )
 
-    def insert_data_into_lc_table(self, parts: int = 1):
-        grid = self.construct_quantile_grid(parts, column='oid1', table=self.circle_match_table)
+    def insert_into_source_obs_table(self, parts: int = 1):
+        grid = self.construct_quantile_grid(parts, column='oid1', table=self.xmatch_table)
         for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
             self.exe_query(
-                'insert_into_lc_table.sql',
-                lc_db=self.db,
-                lc_table=self.lc_table,
+                'insert_into_source_obs_table.sql',
+                source_obs_db=self.db,
+                source_obs_table=self.source_obs_table,
                 obs_db=self.db,
                 obs_table=self.obs_table,
                 xmatch_db=self.db,
@@ -308,6 +313,24 @@ class ZtfPutter:
                 begin_oid=begin_oid,
                 end_oid=end_oid,
             )
+
+    def create_source_meta_table(self, on_exists: str = 'fail'):
+        exists_ok = self.process_on_exists(on_exists, self.source_meta_table)
+        self.exe_query(
+            'create_source_meta_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.source_meta_table,
+        )
+
+    def insert_into_source_meta_table(self):
+        self.exe_query(
+            'insert_into_source_meta_table.sql',
+            source_meta_db=self.db,
+            source_meta_table=self.source_meta_table,
+            source_obs_db=self.db,
+            source_obs_table=self.source_obs_table,
+        )
 
     def __call__(self, actions):
         if 'obs' in actions:
@@ -323,6 +346,9 @@ class ZtfPutter:
         if 'xmatch' in actions:
             self.create_xmatch_table(on_exists=self.on_exists)
             self.insert_into_xmatch_table()
-        if 'lc' in actions:
-            self.create_lc_table(on_exists=self.on_exists)
-            self.insert_data_into_lc_table(parts=self.lc_insert_parts)
+        if 'source-obs' in actions:
+            self.create_source_obs_table(on_exists=self.on_exists)
+            self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
+        if 'source-meta' in actions:
+            self.create_source_meta_table(on_exists=self.on_exists)
+            self.insert_into_source_meta_table()

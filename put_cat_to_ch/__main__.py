@@ -22,16 +22,18 @@ def parse_args():
     parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
                         help='what to do when some of tables to create already exists, "fail" terminates the program, '
                              '"keep" does nothing, and "drop" recreates the table')
-    parser.add_argument('-a', '--action', default={'obs', 'meta', 'circle', 'xmatch', 'lc'}, type=str.lower, nargs='+',
-                        choices={'obs', 'meta', 'circle', 'xmatch', 'lc'},
+    parser.add_argument('-a', '--action',
+                        default={'obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        choices={'obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        type=str.lower, nargs='+',
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')
     parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
     parser.add_argument('--circle-match-insert-parts', default=1, type=int,
                         help='specifies the number of parts to split meta table to perform insert into circle-match '
                              'table, less parts require less time, but more memory')
-    parser.add_argument('--lc-insert-parts', default=1, type=int,
-                        help='same as --circle-match-insert-parts but for lc table')
+    parser.add_argument('--source-obs-insert-parts', default=1, type=int,
+                        help='same as --circle-match-insert-parts but for source-obs table')
     parser.add_argument('-c', '--clickhouse-settings', default={}, type=parse_clickhouse_settings,
                         help='additional settings for clickhouse server, format as "key1=value1,key2=value2"')
     args = parser.parse_args()
