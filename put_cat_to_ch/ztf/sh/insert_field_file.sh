@@ -19,4 +19,5 @@ tar -xOzf ${FILE} \
         print meta,$0
       }
     }' \
-  | clickhouse-client --query "INSERT INTO ${TABLE} FORMAT CSV" -h ${HOST}
+  | clickhouse-client --query "INSERT INTO ${TABLE} FORMAT CSV" -h ${HOST} \
+    --http_receive_timeout=600 --http_send_timeout=600 --http_connection_timeout=600
