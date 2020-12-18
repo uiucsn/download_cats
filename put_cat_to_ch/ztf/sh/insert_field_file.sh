@@ -20,4 +20,5 @@ tar -xOzf ${FILE} \
       }
     }' \
   | clickhouse-client --query "INSERT INTO ${TABLE} FORMAT CSV" -h ${HOST} \
-    --http_receive_timeout=600 --http_send_timeout=600 --http_connection_timeout=600
+    --input_format_parallel_parsing=0 \
+    --http_receive_timeout=86400 --http_send_timeout=86400 --http_connection_timeout=86400
