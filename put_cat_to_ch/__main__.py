@@ -13,6 +13,8 @@ def parse_clickhouse_settings(s):
 def parse_args():
     parser = ArgumentParser('Put astronomical catalogue to ClickHouse')
     parser.add_argument('-d', '--dir', default='.', help='directory containing data files')
+    parser.add_argument('--csv-dir', default=None,
+                        help='directory to store temporary CSV files, default is <DIR>/csv')
     parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
     parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel job to run')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='logging verbosity')
@@ -23,8 +25,8 @@ def parse_args():
                         help='what to do when some of tables to create already exists, "fail" terminates the program, '
                              '"keep" does nothing, and "drop" recreates the table')
     parser.add_argument('-a', '--action',
-                        default={'obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
-                        choices={'obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        default={'gen-csv', 'obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        choices={'gen-csv', 'obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
                         type=str.lower, nargs='+',
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')

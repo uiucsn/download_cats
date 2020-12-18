@@ -26,9 +26,12 @@ class ZtfPutter:
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts,
+    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts,
                  source_obs_insert_parts, clickhouse_settings, **_kwargs):
         self.data_dir = dir
+        self.csv_dir = csv_dir
+        if self.csv_dir is None:
+            self.csv_dir = os.path.join(self.data_dir, 'csv')
         self.dr = dr
         self.user = user
         self.host = host
@@ -163,6 +166,32 @@ class ZtfPutter:
             table=table_name,
         )
 
+    def tar_gz_files(self) -> List[str]:
+        path_template = os.path.join(self.data_dir, 'field*.tar.gz')
+        file_paths = sorted(glob(path_template))
+        return file_paths
+
+    def tar_gz_to_csv(self, path):
+        assert path.endswith('.tar.gz')
+        basename = os.path.basename(path)
+        field_name = os.path.splitext(os.path.splitext(basename)[0])[0]
+        csv_name = f'{field_name}.csv'
+        csv_path = os.path.join(self.csv_dir, csv_name)
+        return csv_path
+
+    def csv_files(self) -> List[str]:
+        tar_gz_paths = self.tar_gz_files()
+        csv_paths = [self.tar_gz_to_csv(path) for path in tar_gz_paths]
+        return csv_paths
+
+    def generate_csv_worker(self, input_path, output_path):
+        self.run_script('generate_csv.sh', input_path, output_path)
+
+    def generate_csv(self):
+        os.makedirs(self.csv_dir, exist_ok=True)
+        with ThreadPool(self.processes) as pool:
+            pool.starmap(self.generate_csv_worker, zip(self.tar_gz_files(), self.csv_files()), chunksize=1)
+
     def create_obs_table(self, on_exists: str = 'fail'):
         """Create observations table"""
         exists_ok = self.process_on_exists(on_exists, self.obs_table)
@@ -187,10 +216,26 @@ class ZtfPutter:
         self.run_script('insert_field_file.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
     def insert_data_into_obs_table(self):
-        path_template = os.path.join(self.data_dir, 'field*.tar.gz')
-        file_paths = sorted(glob(path_template))
+        file_paths = self.tar_gz_files()
         with ThreadPool(self.processes) as pool:
             pool.map(self.insert_data_into_obs_table_worker, file_paths, chunksize=1)
+
+    def insert_csv_into_obs_table_worker(self, filepath: str):
+        self.run_script('insert_csv.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
+
+    def insert_csv_into_obs_table(self):
+        csv_paths = self.csv_files()
+        for path in csv_paths:
+            self.insert_csv_into_obs_table_worker(path)
+
+    def remove_csv(self):
+        paths = self.csv_files()
+        for path in paths:
+            os.remove(path)
+        try:
+            os.rmdir(self.csv_dir)
+        except OSError:  # dir is not empty
+            pass
 
     def insert_data_into_obs_meta_table(self):
         self.exe_query(
@@ -333,10 +378,14 @@ class ZtfPutter:
         )
 
     def __call__(self, actions):
+        if 'gen-csv' in actions:
+            self.generate_csv()
         if 'obs' in actions:
             self.create_db()
             self.create_obs_table(on_exists=self.on_exists)
-            self.insert_data_into_obs_table()
+            self.insert_csv_into_obs_table()
+        if 'rm-csv' in actions:
+            self.remove_csv()
         if 'meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
             self.insert_data_into_obs_meta_table()
