@@ -251,6 +251,7 @@ class ZtfPutter:
         try:
             os.rmdir(self.csv_dir)
         except OSError:  # dir is not empty
+            logging.warning(f'temporary CSV dir {self.csv_dir} is not removed, probably it is not empty')
             pass
 
     def insert_data_into_obs_meta_table(self):
