@@ -1,6 +1,7 @@
 import importlib.resources
 import logging
 import os
+import re
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from subprocess import check_call
@@ -26,7 +27,7 @@ class ZtfPutter:
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, radius, circle_match_insert_parts,
+    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, start, end, radius, circle_match_insert_parts,
                  source_obs_insert_parts, clickhouse_settings, **_kwargs):
         self.data_dir = dir
         self.csv_dir = csv_dir
@@ -37,6 +38,8 @@ class ZtfPutter:
         self.host = host
         self.processes = jobs
         self.on_exists = on_exists
+        self.start_csv_field = start
+        self.end_csv_field = end
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
         self.source_obs_table_parts = source_obs_insert_parts
@@ -166,12 +169,18 @@ class ZtfPutter:
             table=table_name,
         )
 
+    def extract_field_number(self, path: str) -> int:
+        basename = os.path.basename(path)
+        match = re.search(r'^field(\d+)', basename)
+        field_no = int(match.group(1))
+        return field_no
+
     def tar_gz_files(self) -> List[str]:
         path_template = os.path.join(self.data_dir, 'field*.tar.gz')
         file_paths = sorted(glob(path_template))
         return file_paths
 
-    def tar_gz_to_csv(self, path):
+    def tar_gz_to_csv(self, path: str) -> str:
         assert path.endswith('.tar.gz')
         basename = os.path.basename(path)
         field_name = os.path.splitext(os.path.splitext(basename)[0])[0]
@@ -223,8 +232,15 @@ class ZtfPutter:
     def insert_csv_into_obs_table_worker(self, filepath: str):
         self.run_script('insert_csv.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
-    def insert_csv_into_obs_table(self):
+    def insert_csv_into_obs_table(self, start: Optional[int] = None, end: Optional[int] = None):
         csv_paths = self.csv_files()
+        if (start is not None) or (end is not None):
+            field_numbers = [self.extract_field_number(path) for path in csv_paths]
+            if start is None:
+                start = min(field_numbers)
+            if end is None:
+                end = max(field_numbers)
+            csv_paths = [path for path, field_no in zip(csv_paths, field_numbers) if start <= field_no <= end]
         with ThreadPool(self.processes) as pool:
             pool.map(self.insert_csv_into_obs_table_worker, csv_paths, chunksize=1)
 
@@ -383,7 +399,7 @@ class ZtfPutter:
         if 'csv-obs' in actions:
             self.create_db()
             self.create_obs_table(on_exists=self.on_exists)
-            self.insert_csv_into_obs_table()
+            self.insert_csv_into_obs_table(start=self.start_csv_field, end=self.end_csv_field)
         if 'rm-csv' in actions:
             self.remove_csv()
         if 'tar.gz-obs' in actions:

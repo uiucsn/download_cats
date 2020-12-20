@@ -30,6 +30,8 @@ def parse_args():
                         type=str.lower, nargs='+',
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')
+    parser.add_argument('--start', default=None, type=float, help='specify the first item')
+    parser.add_argument('--end', default=None, type=float, help='specify the last item (it is INCLUDED)')
     parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
     parser.add_argument('--circle-match-insert-parts', default=1, type=int,
                         help='specifies the number of parts to split meta table to perform insert into circle-match '
