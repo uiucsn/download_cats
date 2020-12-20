@@ -212,13 +212,13 @@ class ZtfPutter:
             table=self.meta_table,
         )
 
-    def insert_data_into_obs_table_worker(self, filepath: str):
+    def insert_tar_gz_into_obs_table_worker(self, filepath: str):
         self.run_script('insert_field_file.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
-    def insert_data_into_obs_table(self):
+    def insert_tar_gz_into_obs_table(self):
         file_paths = self.tar_gz_files()
         with ThreadPool(self.processes) as pool:
-            pool.map(self.insert_data_into_obs_table_worker, file_paths, chunksize=1)
+            pool.map(self.insert_tar_gz_into_obs_table_worker, file_paths, chunksize=1)
 
     def insert_csv_into_obs_table_worker(self, filepath: str):
         self.run_script('insert_csv.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
@@ -380,12 +380,16 @@ class ZtfPutter:
     def __call__(self, actions):
         if 'gen-csv' in actions:
             self.generate_csv()
-        if 'obs' in actions:
+        if 'csv-obs' in actions:
             self.create_db()
             self.create_obs_table(on_exists=self.on_exists)
             self.insert_csv_into_obs_table()
         if 'rm-csv' in actions:
             self.remove_csv()
+        if 'tar.gz-obs' in actions:
+            self.create_db()
+            self.create_obs_table(on_exists=self.on_exists)
+            self.insert_tar_gz_into_obs_table()
         if 'meta' in actions:
             self.create_obs_meta_table(on_exists=self.on_exists)
             self.insert_data_into_obs_meta_table()

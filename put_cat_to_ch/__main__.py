@@ -25,8 +25,8 @@ def parse_args():
                         help='what to do when some of tables to create already exists, "fail" terminates the program, '
                              '"keep" does nothing, and "drop" recreates the table')
     parser.add_argument('-a', '--action',
-                        default={'gen-csv', 'obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
-                        choices={'gen-csv', 'obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        default={'gen-csv', 'csv-obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
+                        choices={'gen-csv', 'csv-obs', 'rm-csv', 'tar.gz-obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
                         type=str.lower, nargs='+',
                         help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
                              'the same for meta table assuming that "insert_obs" was performed earlier')
