@@ -216,17 +216,17 @@ class ZtfPutter:
         self.run_script('insert_field_file.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
     def insert_tar_gz_into_obs_table(self):
-        file_paths = self.tar_gz_files()
+        tar_gz_paths = self.tar_gz_files()
         with ThreadPool(self.processes) as pool:
-            pool.map(self.insert_tar_gz_into_obs_table_worker, file_paths, chunksize=1)
+            pool.map(self.insert_tar_gz_into_obs_table_worker, tar_gz_paths, chunksize=1)
 
     def insert_csv_into_obs_table_worker(self, filepath: str):
         self.run_script('insert_csv.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
     def insert_csv_into_obs_table(self):
         csv_paths = self.csv_files()
-        for path in csv_paths:
-            self.insert_csv_into_obs_table_worker(path)
+        with ThreadPool(self.processes) as pool:
+            pool.map(self.insert_csv_into_obs_table_worker, csv_paths, chunksize=1)
 
     def remove_csv(self):
         paths = self.csv_files()
