@@ -4,5 +4,7 @@ FILE=$1
 TABLE=$2
 HOST=$3
 
-curl "http://${HOST}:8123/?query=INSERT%20INTO%20${TABLE}%20FORMAT%20CSV" \
+clickhouse-client --query "INSERT INTO ${TABLE} FORMAT CSV" -h ${HOST} \
+    --input_format_parallel_parsing=0 \
+    --http_receive_timeout=86400 --http_send_timeout=86400 --http_connection_timeout=86400 \
   < ${FILE}
