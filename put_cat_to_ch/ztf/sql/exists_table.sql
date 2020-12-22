@@ -1,1 +1,0 @@
-EXISTS TABLE {db}.{table}
