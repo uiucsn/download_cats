@@ -86,34 +86,6 @@ class ZtfPutter(CHClient):
     def source_meta_table(self):
         return f'dr{self.dr:d}_source_meta_{self.radius_table_suffix}'
 
-    def process_on_exists(self, on_exists: str, table_name: str) -> bool:
-        """Process "on_exists" politics and return exists_ok
-
-        Parameters
-        ----------
-        on_exists : str
-            If table already exists than:
-            - 'fail' : throw a DB::Exception
-            - 'keep' : do nothing
-            - 'drop' : drop and create the table again
-        table_name : str
-            Table to process
-        """
-        logging.info(f'Creating table {self.db}.{table_name}')
-
-        if on_exists == 'fail':
-            return False
-        elif on_exists == 'keep':
-            return True
-        elif on_exists == 'drop':
-            if self.exists_table(self.db, table_name):
-                self.drop_table(self.db, table_name, not_exists_ok=False)
-            return False
-
-        msg = f'on_exists must be one of "fail" or "keep" or "drop", not {on_exists}'
-        logging.warning(msg)
-        raise ValueError(msg)
-
     @staticmethod
     def extract_field_number(path: str) -> int:
         basename = os.path.basename(path)
@@ -151,7 +123,7 @@ class ZtfPutter(CHClient):
 
     def create_obs_table(self, on_exists: str = 'fail'):
         """Create observations table"""
-        exists_ok = self.process_on_exists(on_exists, self.obs_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.obs_table)
         self.exe_query(
             'create_obs_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
@@ -161,7 +133,7 @@ class ZtfPutter(CHClient):
 
     def create_obs_meta_table(self, on_exists: str = 'fail'):
         """Create table containing ZTF object information"""
-        exists_ok = self.process_on_exists(on_exists, self.meta_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.meta_table)
         self.exe_query(
             'create_obs_meta_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
@@ -221,7 +193,7 @@ class ZtfPutter(CHClient):
 
         It will be used to create xmatch table
         """
-        exists_ok = self.process_on_exists(on_exists, self.circle_match_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.circle_match_table)
         self.exe_query(
             'create_circle_match_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
@@ -280,7 +252,7 @@ class ZtfPutter(CHClient):
 
     def create_xmatch_table(self, on_exists: str = 'fail'):
         """Create self cross-match table"""
-        exists_ok = self.process_on_exists(on_exists, self.xmatch_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.xmatch_table)
         self.exe_query(
             'create_xmatch_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
@@ -299,7 +271,7 @@ class ZtfPutter(CHClient):
 
     def create_source_obs_table(self, on_exists: str = 'fail'):
         """Create self cross-match table"""
-        exists_ok = self.process_on_exists(on_exists, self.source_obs_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.source_obs_table)
         self.exe_query(
             'create_source_obs_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
@@ -323,7 +295,7 @@ class ZtfPutter(CHClient):
             )
 
     def create_source_meta_table(self, on_exists: str = 'fail'):
-        exists_ok = self.process_on_exists(on_exists, self.source_meta_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.source_meta_table)
         self.exe_query(
             'create_source_meta_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),

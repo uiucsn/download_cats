@@ -71,3 +71,35 @@ class CHClient:
     def execute(self, query: str) -> List[Tuple]:
         logging.info(f'Executing {query}')
         return self.client.execute(query)
+
+    def process_on_exists(self, on_exists: str, db: str, table_name: str) -> bool:
+        """Process "on_exists" politics and return exists_ok
+
+        Parameters
+        ----------
+        on_exists : str
+            If table already exists than:
+            - 'fail' : throw a DB::Exception
+            - 'keep' : do nothing
+            - 'drop' : drop and create the table again
+            Actually this method doesn't tries to create new table, so 'fail'
+            will throw an exception during actual table creation only
+        db : str
+            Database containing the table
+        table_name : str
+            Table to process
+        """
+        logging.info(f'Creating table {db}.{table_name}')
+
+        if on_exists == 'fail':
+            return False
+        elif on_exists == 'keep':
+            return True
+        elif on_exists == 'drop':
+            if self.exists_table(db, table_name):
+                self.drop_table(db, table_name, not_exists_ok=False)
+            return False
+
+        msg = f'on_exists must be one of "fail" or "keep" or "drop", not {on_exists}'
+        logging.warning(msg)
+        raise ValueError(msg)
