@@ -1,4 +1,4 @@
-import importlib.resources
+import argparse
 import logging
 import os
 import re
@@ -8,6 +8,7 @@ from typing import List, Tuple, Iterable, Optional
 
 import numpy as np
 
+from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.ch_client import CHClient
 from put_cat_to_ch.shell_runner import ShellRunner
 from put_cat_to_ch.ztf import sh, sql
@@ -27,8 +28,8 @@ class ZtfPutter(CHClient):
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, start, end, radius, circle_match_insert_parts,
-                 source_obs_insert_parts, clickhouse_settings, **_kwargs):
+    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
+                 circle_match_insert_parts, source_obs_insert_parts, clickhouse_settings, **_kwargs):
         self.data_dir = dir
         self.csv_dir = csv_dir
         if self.csv_dir is None:
@@ -38,8 +39,8 @@ class ZtfPutter(CHClient):
         self.host = host
         self.processes = jobs
         self.on_exists = on_exists
-        self.start_csv_field = start
-        self.end_csv_field = end
+        self.start_csv_field = start_field
+        self.end_csv_field = end_field
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
         self.source_obs_table_parts = source_obs_insert_parts
@@ -367,3 +368,41 @@ class ZtfPutter(CHClient):
         if 'source-meta' in actions:
             self.create_source_meta_table(on_exists=self.on_exists)
             self.insert_into_source_meta_table()
+
+
+class ZtfArgSubParser(ArgSubParser):
+    command = 'ztf'
+
+    def __init__(self, cli_args: argparse.Namespace):
+        super().__init__(cli_args)
+        self.putter = ZtfPutter(**vars(self.cli_args))
+
+    def __call__(self):
+        self.putter(self.cli_args.actions)
+
+    @staticmethod
+    def add_arguments_to_parser(parser: argparse.ArgumentParser):
+        parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
+        parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
+        parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
+                            help='what to do when some of tables to create already exists: '
+                                 '"fail" terminates the program, '
+                                 '"keep" does nothing,'
+                                 'and "drop" recreates the table')
+        parser.add_argument('-a', '--action',
+                            default={'gen-csv', 'csv-obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs',
+                                     'source-meta'},
+                            choices={'gen-csv', 'csv-obs', 'rm-csv', 'tar.gz-obs', 'meta', 'circle', 'xmatch',
+                                     'source-obs', 'source-meta'},
+                            type=str.lower, nargs='+',
+                            help='actions to perform')
+        parser.add_argument('--start-field', default=None, type=int, help='specify the first field file to insert')
+        parser.add_argument('--end-field', default=None, type=int,
+                            help='specify the last field file to insert (it is included)')
+        parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
+        parser.add_argument('--circle-match-insert-parts', default=1, type=int,
+                            help='specifies the number of parts to split meta table to perform insert into'
+                                 'circle-match table, execution time proportional to number of parts, '
+                                 'but RAM usage is inversly proportional to it')
+        parser.add_argument('--source-obs-insert-parts', default=1, type=int,
+                            help='same as --circle-match-insert-parts but for source-obs table')

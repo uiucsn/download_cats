@@ -1,7 +1,7 @@
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import logging
 
-from put_cat_to_ch import ZtfPutter
+from put_cat_to_ch import ARG_SUB_PARSERS, ZtfPutter
 from put_cat_to_ch.ztf import CURRENT_ZTF_DR
 
 
@@ -10,36 +10,29 @@ def parse_clickhouse_settings(s):
     return settings
 
 
-def parse_args():
+def parse_args() -> Namespace:
     parser = ArgumentParser('Put astronomical catalogue to ClickHouse')
     parser.add_argument('-d', '--dir', default='.', help='directory containing data files')
     parser.add_argument('--csv-dir', default=None,
                         help='directory to store temporary CSV files, default is <DIR>/csv')
-    parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
-    parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel job to run')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='logging verbosity')
     parser.add_argument('-u', '--user', default='default', help='ClickHouse username')
     parser.add_argument('--host', default='localhost',
                         help='Clickhouse hostname, may include port number with semicolon')
-    parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
-                        help='what to do when some of tables to create already exists, "fail" terminates the program, '
-                             '"keep" does nothing, and "drop" recreates the table')
-    parser.add_argument('-a', '--action',
-                        default={'gen-csv', 'csv-obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
-                        choices={'gen-csv', 'csv-obs', 'rm-csv', 'tar.gz-obs', 'meta', 'circle', 'xmatch', 'source-obs', 'source-meta'},
-                        type=str.lower, nargs='+',
-                        help='actions to perform, "insert_obs" creates and fill observation table, "insert_meta" does '
-                             'the same for meta table assuming that "insert_obs" was performed earlier')
-    parser.add_argument('--start', default=None, type=float, help='specify the first item')
-    parser.add_argument('--end', default=None, type=float, help='specify the last item (it is INCLUDED)')
-    parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
-    parser.add_argument('--circle-match-insert-parts', default=1, type=int,
-                        help='specifies the number of parts to split meta table to perform insert into circle-match '
-                             'table, less parts require less time, but more memory')
-    parser.add_argument('--source-obs-insert-parts', default=1, type=int,
-                        help='same as --circle-match-insert-parts but for source-obs table')
     parser.add_argument('-c', '--clickhouse-settings', default={}, type=parse_clickhouse_settings,
                         help='additional settings for clickhouse server, format as "key1=value1,key2=value2"')
+
+    subparsers = parser.add_subparsers(
+        dest='catalog',
+        title='catalogs',
+        description='subcommand to put some catalog into ClickHouse database',
+        help='each catalog has its specific options, see {catalog} --help',
+        required=True,
+    )
+    for command, catalog_parser in ARG_SUB_PARSERS.items():
+        sub_parser = subparsers.add_parser(command)
+        catalog_parser.add_arguments_to_parser(sub_parser)
+
     args = parser.parse_args()
     return args
 
