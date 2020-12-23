@@ -10,6 +10,7 @@ import numpy as np
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.ch_client import CHClient
+from put_cat_to_ch.putter import PutterMeta
 from put_cat_to_ch.shell_runner import ShellRunner
 from put_cat_to_ch.ztf import sh, sql
 
@@ -17,7 +18,7 @@ from put_cat_to_ch.ztf import sh, sql
 CURRENT_ZTF_DR = 4
 
 
-class ZtfPutter(CHClient):
+class ZtfPutter(CHClient, metaclass=PutterMeta):
     db = 'ztf'
 
     _default_settings = {
@@ -312,48 +313,55 @@ class ZtfPutter(CHClient):
             source_obs_table=self.source_obs_table,
         )
 
-    def __call__(self, actions):
-        if 'gen-csv' in actions:
-            self.generate_csv()
-        if 'csv-obs' in actions:
+    default_actions = ('gen_csv', 'csv_obs', 'rm_csv', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta',)
+
+    def action_gen_csv(self):
+        self.generate_csv()
+
+    def action_csv_obs(self):
             self.create_db(self.db)
             self.create_obs_table(on_exists=self.on_exists)
             self.insert_csv_into_obs_table(start=self.start_csv_field, end=self.end_csv_field)
-        if 'rm-csv' in actions:
-            self.remove_csv()
-        if 'tar.gz-obs' in actions:
-            self.create_db(self.db)
-            self.create_obs_table(on_exists=self.on_exists)
-            self.insert_tar_gz_into_obs_table()
-        if 'meta' in actions:
-            self.create_obs_meta_table(on_exists=self.on_exists)
-            self.insert_data_into_obs_meta_table()
-        if 'circle' in actions:
-            self.create_circle_table(on_exists=self.on_exists)
-            self.insert_data_into_circle_table(parts=self.circle_table_parts)
-        if 'xmatch' in actions:
-            self.create_xmatch_table(on_exists=self.on_exists)
-            self.insert_into_xmatch_table()
-        if 'source-obs' in actions:
-            self.create_source_obs_table(on_exists=self.on_exists)
-            self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
-        if 'source-meta' in actions:
-            self.create_source_meta_table(on_exists=self.on_exists)
-            self.insert_into_source_meta_table()
+
+    def action_rm_csv(self):
+        self.remove_csv()
+
+    def action_tar_gz_obs(self):
+        self.create_db(self.db)
+        self.create_obs_table(on_exists=self.on_exists)
+        self.insert_tar_gz_into_obs_table()
+
+    def action_meta(self):
+        self.create_obs_meta_table(on_exists=self.on_exists)
+        self.insert_data_into_obs_meta_table()
+
+    def action_circle(self):
+        self.create_circle_table(on_exists=self.on_exists)
+        self.insert_data_into_circle_table(parts=self.circle_table_parts)
+
+    def action_xmatch(self):
+        self.create_xmatch_table(on_exists=self.on_exists)
+        self.insert_into_xmatch_table()
+
+    def action_source_obs(self):
+        self.create_source_obs_table(on_exists=self.on_exists)
+        self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
+
+    def action_source_meta(self):
+        self.create_source_meta_table(on_exists=self.on_exists)
+        self.insert_into_source_meta_table()
 
 
 class ZtfArgSubParser(ArgSubParser):
     command = 'ztf'
+    putter_cls = ZtfPutter
 
     def __init__(self, cli_args: argparse.Namespace):
         super().__init__(cli_args)
-        self.putter = ZtfPutter(**vars(self.cli_args))
 
-    def __call__(self):
-        self.putter(self.cli_args.actions)
-
-    @staticmethod
-    def add_arguments_to_parser(parser: argparse.ArgumentParser):
+    @classmethod
+    def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
+        super().add_arguments_to_parser(parser)
         parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
         parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
         parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
@@ -361,13 +369,6 @@ class ZtfArgSubParser(ArgSubParser):
                                  '"fail" terminates the program, '
                                  '"keep" does nothing,'
                                  'and "drop" recreates the table')
-        parser.add_argument('-a', '--action',
-                            default={'gen-csv', 'csv-obs', 'rm-csv', 'meta', 'circle', 'xmatch', 'source-obs',
-                                     'source-meta'},
-                            choices={'gen-csv', 'csv-obs', 'rm-csv', 'tar.gz-obs', 'meta', 'circle', 'xmatch',
-                                     'source-obs', 'source-meta'},
-                            type=str.lower, nargs='+',
-                            help='actions to perform')
         parser.add_argument('--start-field', default=None, type=int, help='specify the first field file to insert')
         parser.add_argument('--end-field', default=None, type=int,
                             help='specify the last field file to insert (it is included)')

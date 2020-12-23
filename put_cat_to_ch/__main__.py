@@ -54,8 +54,8 @@ def main():
     configure_logging(cli_args)
     logging.info(cli_args)
 
-    putter = ZtfPutter(**vars(cli_args))
-    putter(cli_args.action)
+    parser = ARG_SUB_PARSERS[cli_args.catalog](cli_args)
+    parser()
 
 
 if __name__ == '__main__':
