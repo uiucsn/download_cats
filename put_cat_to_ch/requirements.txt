@@ -1,2 +1,5 @@
 clickhouse-driver
 numpy
+scipy
+h5py
+joblib

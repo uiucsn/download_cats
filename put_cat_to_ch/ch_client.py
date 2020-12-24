@@ -28,19 +28,19 @@ class CHClient:
     def create_db(self, db: str):
         logging.info(f'Creating database {db}')
         query = f'CREATE DATABASE IF NOT EXISTS {db}'
-        self.client.execute(query)
+        self.execute(query)
 
     def drop_table(self, db: str, table: str, not_exists_ok: bool = False):
         logging.info(f'Drop table {db}.{table}')
         if_exists = self.if_exists(not_exists_ok)
         query = f'DROP TABLE {if_exists} {db}.{table}'
-        self.client.execute(query)
+        self.execute(query)
 
     def exists_table(self, db: str, table: str) -> bool:
         logging.info(f'Checking if table {db}.{table} exists')
 
         query = f'EXISTS TABLE {db}.{table}'
-        result = self.client.execute(query)
+        result = self.execute(query)
 
         try:
             value = result[0][0]
@@ -66,7 +66,7 @@ class CHClient:
     def exe_query(self, filename: str, **format_kwargs: str) -> List[Tuple]:
         logging.info(f'Going to execute query from file {filename}')
         query = self._get_query(filename, **format_kwargs)
-        return self.client.execute(query)
+        return self.execute(query)
 
     def execute(self, query: str) -> List[Tuple]:
         logging.info(f'Executing {query}')

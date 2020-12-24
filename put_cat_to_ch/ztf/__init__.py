@@ -9,16 +9,18 @@ from typing import List, Tuple, Iterable, Optional
 import numpy as np
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
-from put_cat_to_ch.ch_client import CHClient
-from put_cat_to_ch.putter import PutterMeta
+from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
 from put_cat_to_ch.ztf import sh, sql
+
+
+__all__ = ('ZtfPutter', 'ZtfArgSubParser',)
 
 
 CURRENT_ZTF_DR = 4
 
 
-class ZtfPutter(CHClient, metaclass=PutterMeta):
+class ZtfPutter(CHPutter):
     db = 'ztf'
 
     _default_settings = {
@@ -29,12 +31,10 @@ class ZtfPutter(CHClient, metaclass=PutterMeta):
         # 'max_threads': 1,
     }
 
-    def __init__(self, *, dir, csv_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
+    def __init__(self, *, dir, tmp_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
                  circle_match_insert_parts, source_obs_insert_parts, clickhouse_settings, **_kwargs):
         self.data_dir = dir
-        self.csv_dir = csv_dir
-        if self.csv_dir is None:
-            self.csv_dir = os.path.join(self.data_dir, 'csv')
+        self.csv_dir = tmp_dir or self.data_dir
         self.dr = dr
         self.user = user
         self.host = host
@@ -364,11 +364,6 @@ class ZtfArgSubParser(ArgSubParser):
         super().add_arguments_to_parser(parser)
         parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
         parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
-        parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
-                            help='what to do when some of tables to create already exists: '
-                                 '"fail" terminates the program, '
-                                 '"keep" does nothing,'
-                                 'and "drop" recreates the table')
         parser.add_argument('--start-field', default=None, type=int, help='specify the first field file to insert')
         parser.add_argument('--end-field', default=None, type=int,
                             help='specify the last field file to insert (it is included)')

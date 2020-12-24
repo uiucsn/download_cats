@@ -3,6 +3,8 @@ from inspect import isfunction
 from itertools import chain
 from typing import Iterable
 
+from put_cat_to_ch.ch_client import CHClient
+
 
 def _putter_call(self, actions: Iterable[str]):
     for action in actions:
@@ -42,11 +44,11 @@ class PutterMeta(type):
         return super().__new__(cls, clsname, bases, attrs)
 
 
-class Putter(metaclass=PutterMeta):
+class CHPutter(CHClient, metaclass=PutterMeta):
     pass
 
 
-class __ExamplePutter(Putter):
+class __ExamplePutter(metaclass=PutterMeta):
     """Example putter"""
     default_actions = ('x', 'a')
 

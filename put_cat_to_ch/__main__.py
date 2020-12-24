@@ -1,8 +1,7 @@
 from argparse import ArgumentParser, Namespace
 import logging
 
-from put_cat_to_ch import ARG_SUB_PARSERS, ZtfPutter
-from put_cat_to_ch.ztf import CURRENT_ZTF_DR
+from put_cat_to_ch import ARG_SUB_PARSERS
 
 
 def parse_clickhouse_settings(s):
@@ -13,8 +12,13 @@ def parse_clickhouse_settings(s):
 def parse_args() -> Namespace:
     parser = ArgumentParser('Put astronomical catalogue to ClickHouse')
     parser.add_argument('-d', '--dir', default='.', help='directory containing data files')
-    parser.add_argument('--csv-dir', default=None,
-                        help='directory to store temporary CSV files, default is <DIR>/csv')
+    parser.add_argument('--tmp-dir', default=None,
+                        help='directory to store temporary files, default is <DIR>')
+    parser.add_argument('-e', '--on_exists', default='fail', type=str.lower, choices={'fail', 'keep', 'drop'},
+                        help='what to do when some of tables to create already exists: '
+                             '"fail" terminates the program, '
+                             '"keep" does nothing,'
+                             'and "drop" recreates the table')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='logging verbosity')
     parser.add_argument('-u', '--user', default='default', help='ClickHouse username')
     parser.add_argument('--host', default='localhost',
