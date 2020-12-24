@@ -16,6 +16,7 @@ from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.cats_htm import sh, sql
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
+from put_cat_to_ch.utils import remove_files_and_directory
 
 
 __all__ = ('CatsHtmPutter', 'CatsHtmArgSubParser',)
@@ -86,7 +87,7 @@ class CatsHtmPutter(CHPutter):
 
     def __init__(self, dir, tmp_dir, user, host, clickhouse_settings, on_exists, cat, jobs, **_kwargs):
         self.data_dir = dir
-        self.raw_bin_dir = tmp_dir or self.data_dir
+        self.row_bin_dir = tmp_dir or self.data_dir
         self.catalogs = self._get_catalogs(dir, cat)
         self.processes = jobs
         self.on_exists = on_exists
@@ -142,7 +143,7 @@ class CatsHtmPutter(CHPutter):
             c.create_table(on_exists)
 
     def row_bin_paths(self) -> Tuple[str]:
-        paths = tuple(os.path.join(self.raw_bin_dir, f'{c.name}.dat') for c in self.catalogs)
+        paths = tuple(os.path.join(self.row_bin_dir, f'{c.name}.dat') for c in self.catalogs)
         return paths
 
     def gen_row_bins_worker(self, path: str, c: SingleCatHtm):
@@ -162,7 +163,11 @@ class CatsHtmPutter(CHPutter):
         with ThreadPool(processes=self.processes) as pool:
             pool.starmap(self.insert_row_bins_worker, zip(self.row_bin_paths(), self.catalogs))
 
-    default_actions = ('gen', 'create', 'insert')
+    def remove_row_bins(self):
+        logging.info(f'Removing CSV field files from {self.row_bin_dir}')
+        remove_files_and_directory(self.row_bin_dir, self.row_bin_paths())
+
+    default_actions = ('gen', 'create', 'insert', 'rm')
 
     def action_print_columns(self):
         from pprint import pprint
@@ -183,6 +188,10 @@ class CatsHtmPutter(CHPutter):
     def action_insert(self):
         logging.info('Inserting row binary files')
         self.insert_row_bins()
+
+    def action_rm(self):
+        logging.info('Removing row binary files')
+        self.remove_row_bins()
 
 
 class CatsHtmArgSubParser(ArgSubParser):

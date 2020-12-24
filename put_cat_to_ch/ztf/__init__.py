@@ -11,6 +11,7 @@ import numpy as np
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
+from put_cat_to_ch.utils import remove_files_and_directory
 from put_cat_to_ch.ztf import sh, sql
 
 
@@ -171,13 +172,7 @@ class ZtfPutter(CHPutter):
 
     def remove_csv(self):
         logging.info(f'Removing CSV field files from {self.csv_dir}')
-        paths = self.csv_files()
-        for path in paths:
-            os.remove(path)
-        try:
-            os.rmdir(self.csv_dir)
-        except OSError:  # dir is not empty
-            logging.warning(f'temporary CSV dir {self.csv_dir} is not removed, probably it is not empty')
+        remove_files_and_directory(self.csv_dir, self.csv_files())
 
     def insert_data_into_obs_meta_table(self):
         logging.info(f'Inserting data into {self.meta_table}')
