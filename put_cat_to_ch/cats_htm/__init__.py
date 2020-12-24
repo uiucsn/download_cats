@@ -5,6 +5,7 @@ import logging
 import os
 import re
 from glob import glob
+from multiprocessing.pool import ThreadPool
 from typing import BinaryIO, Iterable, Tuple
 
 import h5py
@@ -74,7 +75,7 @@ class SingleCatHtm:
                     if not self.dataset_name_re.match(name):
                         continue
                     transposed = dataset[:].T.copy()
-                    file.write(transposed.data)
+                    file.write(transposed)
 
     def __str__(self):
         return f'catsHTM catalog {self.name} located at {self.path}'
@@ -154,9 +155,12 @@ class CatsHtmPutter(CHPutter):
             worker = delayed(self.gen_row_bins_worker)
             par(worker(path, c) for path, c in zip(self.row_bin_paths(), self.catalogs))
 
+    def insert_row_bins_worker(self, path: str, c: SingleCatHtm):
+        self.shell_runner('insert_row_bin.sh', path, f'{c.db}.{c.table}', self.host)
+
     def insert_row_bins(self):
-        for path, c in zip(self.row_bin_paths(), self.catalogs):
-            self.shell_runner('insert_row_bin.sh', path, f'{c.db}.{c.table}', self.host)
+        with ThreadPool(processes=self.processes) as pool:
+            pool.starmap(self.insert_row_bins_worker, zip(self.row_bin_paths(), self.catalogs))
 
     default_actions = ('create', 'gen_row_bins', 'insert')
 
@@ -189,4 +193,5 @@ class CatsHtmArgSubParser(ArgSubParser):
     def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
         super().add_arguments_to_parser(parser)
         parser.add_argument('-c', '--cat', type=str.lower, default=('all',), nargs='+', help='catsHTM catalogs to use')
-        parser.add_argument('-j', '--jobs', type=int, default=1, help='number of jobs to generate row binary files')
+        parser.add_argument('-j', '--jobs', type=int, default=1,
+                            help='number of jobs for "gen_row_bins" and "insert" actions')
