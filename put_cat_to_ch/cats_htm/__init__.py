@@ -162,7 +162,7 @@ class CatsHtmPutter(CHPutter):
         with ThreadPool(processes=self.processes) as pool:
             pool.starmap(self.insert_row_bins_worker, zip(self.row_bin_paths(), self.catalogs))
 
-    default_actions = ('create', 'gen_row_bins', 'insert')
+    default_actions = ('gen', 'create', 'insert')
 
     def action_print_columns(self):
         from pprint import pprint
@@ -176,7 +176,7 @@ class CatsHtmPutter(CHPutter):
         self.create_db(self.db)
         self.create_tables(self.on_exists)
 
-    def action_gen_row_bins(self):
+    def action_gen(self):
         logging.info('Generating CH row binary data files from HDF5')
         self.gen_row_bins()
 
