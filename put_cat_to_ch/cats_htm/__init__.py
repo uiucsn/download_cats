@@ -151,6 +151,7 @@ class CatsHtmPutter(CHPutter):
             c.write_row_binary(f)
 
     def gen_row_bins(self):
+        os.makedirs(self.row_bin_dir, exist_ok=True)
         with parallel_backend('loky', n_jobs=self.processes):
             par = Parallel()
             worker = delayed(self.gen_row_bins_worker)
