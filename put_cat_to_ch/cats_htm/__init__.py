@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import re
+from collections import Counter
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from typing import BinaryIO, Iterable, Tuple
@@ -31,7 +32,36 @@ class SingleCatHtm:
         self.name = name
         self.htm_col_cell_path = os.path.join(self.path, f'{self.name}_htmColCell.mat')
         self.htm_col_cell = loadmat(self.htm_col_cell_path)
+        self.col_names = tuple(a[0] for a in self.htm_col_cell['ColCell'][0])
+        self.col_units = tuple('dimensionless' if a.size == 0 else a[0] for a in self.htm_col_cell['ColUnits'][0])
         self.hdf5_paths = tuple(sorted(glob(os.path.join(self.path, '*.hdf5'))))
+        
+        self._check_columns(self.col_names, col_units)
+
+    def _check_columns(self, names: Tuple[str], units: Tuple[str]):
+        names_counter = Counter(s.lower() for s in names)
+        if 'ra' not in names_counter:
+            msg = f"Catalog {self.name} doesn't have column 'ra'"
+            logging.error(msg)
+            raise ValueError(msg)
+        if 'dec' not in names_counter:
+            msg = f"Catalog {self.name} doesn't have column 'dec'"
+            logging.error(msg)
+            raise ValueError(msg)
+        if len(names) != len(names_counter):
+            repeated = [k for k, v in names_counter.items() if v > 1]
+            msg = f'Catalog {self.name} has some column repeated: {repeated}'
+            logging.error(msg)
+            raise NotImplementedError(msg)
+        names_units = dict(zip(names, units))
+        if names_units['ra'] != 'deg':
+            msg = f'ra is in {names_units["ra"]}, only deg is supported'
+            logging.error(msg)
+            raise NotImplementedError(msg)
+        if names_units['dec'] != 'deg':
+            msg = f'dec is in {names_units["dec"]}, only deg is supported'
+            logging.error(msg)
+            raise NotImplementedError(msg)
 
     @property
     def db(self):
@@ -40,16 +70,6 @@ class SingleCatHtm:
     @property
     def table(self):
         return self.name
-
-    @property
-    def col_names(self) -> Tuple[str]:
-        col_cell = self.htm_col_cell['ColCell'][0]
-        return tuple(a[0] for a in col_cell)
-
-    @property
-    def col_units(self) -> Tuple[str]:
-        col_units = self.htm_col_cell['ColUnits'][0]
-        return tuple('dimensionless' if a.size == 0 else a[0] for a in col_units)
 
     @property
     def ch_column_names(self) -> Tuple[str]:
