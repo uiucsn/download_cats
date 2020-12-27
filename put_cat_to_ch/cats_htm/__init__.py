@@ -36,7 +36,7 @@ class SingleCatHtm:
         self.col_units = tuple('dimensionless' if a.size == 0 else a[0] for a in self.htm_col_cell['ColUnits'][0])
         self.hdf5_paths = tuple(sorted(glob(os.path.join(self.path, '*.hdf5'))))
         
-        self._check_columns(self.col_names, col_units)
+        self._check_columns(self.col_names, self.col_units)
 
     def _check_columns(self, names: Tuple[str], units: Tuple[str]):
         names_counter = Counter(s.lower() for s in names)
