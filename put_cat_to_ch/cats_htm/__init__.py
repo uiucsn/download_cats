@@ -53,7 +53,7 @@ class SingleCatHtm:
             msg = f'Catalog {self.name} has some column repeated: {repeated}'
             logging.error(msg)
             raise NotImplementedError(msg)
-        names_units = dict(zip(names, units))
+        names_units = dict(zip((s.lower() for s in names), units))
         if names_units['ra'] != 'deg':
             msg = f'ra is in {names_units["ra"]}, only deg is supported'
             logging.error(msg)
@@ -222,6 +222,6 @@ class CatsHtmArgSubParser(ArgSubParser):
     @classmethod
     def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
         super().add_arguments_to_parser(parser)
-        parser.add_argument('-c', '--cat', type=str.lower, default=('all',), nargs='+', help='catsHTM catalogs to use')
+        parser.add_argument('-c', '--cat', default=('all',), nargs='+', help='catsHTM catalogs to use')
         parser.add_argument('-j', '--jobs', type=int, default=1,
                             help='number of jobs for "gen_row_bins" and "insert" actions')
