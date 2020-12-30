@@ -7,7 +7,7 @@ import re
 from collections import Counter
 from glob import glob
 from multiprocessing.pool import ThreadPool
-from typing import BinaryIO, Iterable, Tuple
+from typing import BinaryIO, Iterable, List, Tuple
 
 import h5py
 from joblib import delayed, Parallel, parallel_backend
@@ -53,15 +53,6 @@ class SingleCatHtm:
             msg = f'Catalog {self.name} has some column repeated: {repeated}'
             logging.error(msg)
             raise NotImplementedError(msg)
-        names_units = dict(zip((s.lower() for s in names), units))
-        if names_units['ra'] != 'deg':
-            msg = f'ra is in {names_units["ra"]}, only deg is supported'
-            logging.error(msg)
-            raise NotImplementedError(msg)
-        if names_units['dec'] != 'deg':
-            msg = f'dec is in {names_units["dec"]}, only deg is supported'
-            logging.error(msg)
-            raise NotImplementedError(msg)
 
     @property
     def db(self):
@@ -75,8 +66,24 @@ class SingleCatHtm:
     def ch_column_names(self) -> Tuple[str]:
         return tuple(col.lower() for col in self.col_names)
 
+    def _prepare_column_names_for_ch(self) -> List[str]:
+        cols = [col.lower() for col in self.ch_column_names]
+        if self.name == 'AKARI':
+            cols[cols.index('ra')] = 'ra_rad'
+            cols[cols.index('dec')] = 'dec_rad'
+            cols[cols.index('ra')] = 'ra_arcsec'
+            cols[cols.index('dec')] = 'dec_arcsec'
+        elif self.name == 'HSCv2':
+            cols[cols.index('matchra')] = 'ra_rad'
+            cols[cols.index('matchdec')] = 'dec_rad'
+        else:
+            cols[cols.index('ra')] = 'ra_rad'
+            cols[cols.index('dec')] = 'dec_rad'
+        return cols
+
+
     def ch_columns_str(self) -> str:
-        s = ',\n    '.join(f'{col.lower()} Float64' for col in self.ch_column_names)
+        s = ',\n    '.join(f'{col.lower()} Float64' for col in self._prepare_column_names_for_ch())
         return s
 
     def create_table(self, on_exists: str = 'fail'):
