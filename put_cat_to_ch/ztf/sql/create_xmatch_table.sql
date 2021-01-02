@@ -6,4 +6,4 @@ CREATE TABLE {if_not_exists} {db}.{table}
     dec2 Float64
 )
 ENGINE = MergeTree
-ORDER BY oid1
+ORDER BY oid2

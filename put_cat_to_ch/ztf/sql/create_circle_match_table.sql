@@ -10,4 +10,4 @@ CREATE TABLE {if_not_exists} {db}.{table}
     distance_deg Float64
 )
 ENGINE = MergeTree()
-ORDER BY oid1
+ORDER BY oid2
