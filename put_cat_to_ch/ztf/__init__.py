@@ -210,13 +210,15 @@ class ZtfPutter(CHPutter):
         return result[0][0]
 
     # Improve typing when numpy 1.20 will arrive
-    def construct_quantile_grid(self, parts: int, **kwargs) -> np.ndarray:
+    def construct_quantile_grid(self, parts: int, dtype: type = np.float64, **kwargs) -> List:
         """Create grid to split some column data range to
 
         Parameters
         ----------
         parts : int
             Positive number. If zero, then [-INF, +INF] is returned
+        dtype : numpy dtype
+            Convert to
         **kwargs
             All arguments of `get_min_max_quantiles` but `levels`
         """
@@ -225,15 +227,16 @@ class ZtfPutter(CHPutter):
             logging.warning(msg)
             raise ValueError(msg)
         if parts == 1:
-            return np.array([-np.inf, np.inf])
+            return [-np.inf, np.inf]
         levels = np.linspace(0, 1, parts, endpoint=False)[1:]
         q = self.get_quantiles(levels=levels, **kwargs)
-        assert np.all(np.diff(q) > 0), 'quantiles must be monotonically increasing'
-        grid = np.r_[-np.inf, q, np.inf]
+        q = np.asarray(q, dtype=dtype)
+        assert np.all(q[1:] > q[:-1]), f'quantiles must be monotonically increasing: {q}'
+        grid = [-np.inf, *q, np.inf]
         return grid
 
     def insert_data_into_circle_table(self, parts: int = 1):
-        grid = self.construct_quantile_grid(parts, column='oid', table=self.meta_table)
+        grid = self.construct_quantile_grid(parts, dtype=np.uint64, column='oid', table=self.meta_table)
         for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
             self.exe_query(
                 'insert_into_circle_match_table.sql',
@@ -276,7 +279,7 @@ class ZtfPutter(CHPutter):
         )
 
     def insert_into_source_obs_table(self, parts: int = 1):
-        grid = self.construct_quantile_grid(parts, column='oid1', table=self.xmatch_table)
+        grid = self.construct_quantile_grid(parts, dtype=np.uint64, column='oid1', table=self.xmatch_table)
         for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
             self.exe_query(
                 'insert_into_source_obs_table.sql',
