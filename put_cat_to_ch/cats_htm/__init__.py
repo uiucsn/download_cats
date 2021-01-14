@@ -10,6 +10,7 @@ from multiprocessing.pool import ThreadPool
 from typing import BinaryIO, Iterable, List, Tuple
 
 import h5py
+import numpy as np
 from joblib import delayed, Parallel, parallel_backend
 from scipy.io import loadmat
 
@@ -27,28 +28,22 @@ class SingleCatHtm:
     dataset_name_re = re.compile(r'^htm_\d+$')
 
     def __init__(self, putter: CatsHtmPutter, path: str, name: str):
+        logging.info(f'Constructing SingleCatHtm instance for {name}')
+
         self.putter = putter
         self.path = path
         self.name = name
         self.htm_col_cell_path = os.path.join(self.path, f'{self.name}_htmColCell.mat')
         self.htm_col_cell = loadmat(self.htm_col_cell_path)
-        self.col_names = tuple(a[0] for a in self.htm_col_cell['ColCell'][0])
-        self.col_units = tuple('dimensionless' if a.size == 0 else a[0] for a in self.htm_col_cell['ColUnits'][0])
+        self.col_names = tuple(np.concatenate(self.htm_col_cell['ColCell'].flatten()))
+        self.col_units = tuple('dimensionless' if a.size == 0 else a[0] for a in self.htm_col_cell['ColUnits'].flat)
         self.hdf5_paths = tuple(sorted(glob(os.path.join(self.path, '*.hdf5'))))
         
-        self._check_columns(self.col_names, self.col_units)
+        self._check_columns(self._prepare_column_names_for_ch(), self.col_units)
 
-    def _check_columns(self, names: Tuple[str], units: Tuple[str]):
-        names_counter = Counter(s.lower() for s in names)
-        if 'ra' not in names_counter:
-            msg = f"Catalog {self.name} doesn't have column 'ra'"
-            logging.error(msg)
-            raise ValueError(msg)
-        if 'dec' not in names_counter:
-            msg = f"Catalog {self.name} doesn't have column 'dec'"
-            logging.error(msg)
-            raise ValueError(msg)
-        if len(names) != len(names_counter):
+    def _check_columns(self, ch_names: Tuple[str], units: Tuple[str]):
+        names_counter = Counter(ch_names)
+        if len(ch_names) != len(names_counter):
             repeated = [k for k, v in names_counter.items() if v > 1]
             msg = f'Catalog {self.name} has some column repeated: {repeated}'
             logging.error(msg)
@@ -67,7 +62,8 @@ class SingleCatHtm:
         return tuple(col.lower() for col in self.col_names)
 
     def _prepare_column_names_for_ch(self) -> List[str]:
-        cols = [col.lower() for col in self.ch_column_names]
+        cols = list(self.ch_column_names)
+        logging.info(f'cols = {cols}')
         if self.name == 'AKARI':
             cols[cols.index('ra')] = 'ra_rad'
             cols[cols.index('dec')] = 'dec_rad'
@@ -83,7 +79,7 @@ class SingleCatHtm:
 
 
     def ch_columns_str(self) -> str:
-        s = ',\n    '.join(f'{col.lower()} Float64' for col in self._prepare_column_names_for_ch())
+        s = ',\n    '.join(f'`{col.lower()}` Float64' for col in self._prepare_column_names_for_ch())
         return s
 
     def create_table(self, on_exists: str = 'fail'):
