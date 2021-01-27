@@ -4,7 +4,7 @@ import os
 import re
 from glob import glob
 from multiprocessing.pool import ThreadPool
-from typing import List, Tuple, Iterable, Optional
+from typing import List, Tuple, Iterable, Optional, Union
 
 import numpy as np
 
@@ -33,7 +33,8 @@ class ZtfPutter(CHPutter):
     }
 
     def __init__(self, *, dir, tmp_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
-                 circle_match_insert_parts, source_obs_insert_parts, clickhouse_settings, **_kwargs):
+                 circle_match_insert_parts, circle_match_insert_interval, source_obs_insert_parts, clickhouse_settings,
+                 **_kwargs):
         self.data_dir = dir
         self.csv_dir = tmp_dir or self.data_dir
         self.dr = dr
@@ -45,6 +46,7 @@ class ZtfPutter(CHPutter):
         self.end_csv_field = end_field
         self.radius_arcsec = radius
         self.circle_table_parts = circle_match_insert_parts
+        self.circle_table_interval = circle_match_insert_interval
         self.source_obs_table_parts = source_obs_insert_parts
         self.settings = self._default_settings
         self.settings.update(clickhouse_settings)
@@ -197,13 +199,38 @@ class ZtfPutter(CHPutter):
             table=self.circle_match_table,
         )
 
-    def get_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str):
+    # TODO: replace bool with Literal[False] when python 3.7 support could be droped
+    def get_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str,
+                      column_determinator: Union[None, bool, str] = None):
+        """Get approximate quantiles of column destribution
+        
+        column : str
+            Column name
+        levels : iterable of floats
+            Quantile levels
+        db : str
+            Databse name
+        table : str
+            Table name
+        column_determinator : None, False or str
+            Column used to generate random numbers for reservoir sampling
+            algorithm used by CH to find approximate quantile values.
+            This column must have positive elements, preferably unique.
+            `None` means use `column`, `False` means use non-determenistic
+            quantile algorithm.
+        """
         if db is None:
             db = self.db
         levels_str = ', '.join(map(str, levels))
+        if column_determinator is False:
+            function = f'quantiles({levels_str})({column})'
+        else:
+            if column_determinator is None:
+                column_determinator = column
+            function = f'quantilesDeterministic({levels_str})({column}, {column_determinator})'
         query = f'''
         SELECT
-            quantiles({levels_str})({column})
+            {function}
         FROM {db}.{table}
         '''
         result = self.execute(query)
@@ -235,9 +262,23 @@ class ZtfPutter(CHPutter):
         grid = [-np.inf, *q, np.inf]
         return grid
 
-    def insert_data_into_circle_table(self, parts: int = 1):
+    # TODO: replace str with Literal['all'] when python 3.7 could be droped
+    def insert_data_into_circle_table(self, parts: int = 1, interval: Union[int, str] = 'all'):
+        """Insert data into cirle_match table
+        
+        Arguments
+        ---------
+        parts : int
+            Number of parts to split initial table to perform insertion
+        interval : int or 'all'
+            Which part to insert, either 'all' or int from `0` to `parts - 1`
+        """
         grid = self.construct_quantile_grid(parts, dtype=np.uint64, column='oid', table=self.meta_table)
-        for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
+        if interval == 'all':
+            intervals = zip(grid[:-1], grid[1:])
+        else:
+            intervals = [(grid[interval], grid[interval + 1])]
+        for begin_oid, end_oid in intervals:
             self.exe_query(
                 'insert_into_circle_match_table.sql',
                 circle_db=self.db,
@@ -335,7 +376,7 @@ class ZtfPutter(CHPutter):
 
     def action_circle(self):
         self.create_circle_table(on_exists=self.on_exists)
-        self.insert_data_into_circle_table(parts=self.circle_table_parts)
+        self.insert_data_into_circle_table(parts=self.circle_table_parts, interval=self.circle_table_interval)
 
     def action_xmatch(self):
         self.create_xmatch_table(on_exists=self.on_exists)
@@ -367,8 +408,12 @@ class ZtfArgSubParser(ArgSubParser):
                             help='specify the last field file to insert (it is included)')
         parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
         parser.add_argument('--circle-match-insert-parts', default=1, type=int,
-                            help='specifies the number of parts to split meta table to perform insert into'
+                            help='specifies the number of parts to split meta table to perform insert into '
                                  'circle-match table, execution time proportional to number of parts, '
                                  'but RAM usage is inversly proportional to it')
+        parser.add_argument('--circle-match-insert-interval', default='all',
+                            type=lambda s: s if s == 'all' else int(s),
+                            help='which part of meta table insert to circle table now, default is '
+                                 'inserting all parts sequentially')
         parser.add_argument('--source-obs-insert-parts', default=1, type=int,
                             help='same as --circle-match-insert-parts but for source-obs table')
