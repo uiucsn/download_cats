@@ -2,3 +2,4 @@ numpy
 astropy
 BeautifulSoup4
 requests
+catsHTM

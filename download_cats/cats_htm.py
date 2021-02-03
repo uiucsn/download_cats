@@ -1,10 +1,10 @@
 import logging
 import os
-from multiprocessing import Pool
 from urllib.parse import urljoin
 
-from astropy.io import ascii
 import requests
+from astropy.io import ascii
+from catsHTM.script import get_CatDir
 
 from download_cats.base import BaseFetcher
 from download_cats.utils import *
@@ -18,7 +18,7 @@ def get_catalog_list(dest):
     url = urljoin(BASE_URL, HTML_TABLE_NAME)
     logging.info('Downloading catalog HTML table')
     table = ascii.read(url, format='html')
-    table['dest'] = [os.path.join(dest, name) for name in table['Name']]
+    table['dest'] = [os.path.join(dest, get_CatDir(name)) for name in table['Name']]
     table['wget_url'] = [urljoin(BASE_URL, file) for file in table['wget file']]
     table['checksum_url'] = [urljoin(BASE_URL, file) for file in table['checksum']]
     return table
