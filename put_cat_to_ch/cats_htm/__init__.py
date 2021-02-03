@@ -5,12 +5,14 @@ import logging
 import os
 import re
 from collections import Counter
+from functools import lru_cache
 from glob import glob
 from multiprocessing.pool import ThreadPool
 from typing import BinaryIO, Iterable, List, Tuple
 
 import h5py
 import numpy as np
+from download_cats.cats_htm import get_catalog_list
 from joblib import delayed, Parallel, parallel_backend
 from scipy.io import loadmat
 
@@ -22,6 +24,13 @@ from put_cat_to_ch.utils import remove_files_and_directory
 
 
 __all__ = ('CatsHtmPutter', 'CatsHtmArgSubParser',)
+
+
+@lru_cache
+def get_name_dir_dict(data_dir):
+    table = get_catalog_list(data_dir)
+    d = {name: dest for name, dest in zip(table['Name'], table['dest'])}
+    return d
 
 
 class SingleCatHtm:
@@ -77,7 +86,6 @@ class SingleCatHtm:
             cols[cols.index('dec')] = 'dec_rad'
         return cols
 
-
     def ch_columns_str(self) -> str:
         s = ',\n    '.join(f'`{col.lower()}` Float64' for col in self._prepare_column_names_for_ch())
         return s
@@ -132,32 +140,29 @@ class CatsHtmPutter(CHPutter):
     def _get_catalogs(self, dir: str, cat: Iterable[str]) -> Tuple[SingleCatHtm]:
         cat = list(cat)
 
-        names = []
-        for name in sorted(os.listdir(dir)):
-            if name.startswith('.'):
-                continue
-            path = os.path.join(dir, name)
+        name_path = {}
+        for name, path in get_name_dir_dict(dir).items():
             if not os.path.isdir(path):
                 continue
-            if not any(f.endswith('.hdf5') for f in os.listdir(path)):
+            if not any(f.endswith(b'.hdf5') for f in os.listdir(path)):
                 continue
-            names.append(name)
+            name_path[name] = path
 
         cat_set = set(cat)
         if 'all' in cat_set:
             cat.remove('all')
             cat_set.remove('all')
-            for name in names:
+            for name in name_path:
                 if name not in cat_set:
                     cat.append(name)
 
-        not_in_dir = cat_set - set(names)
+        not_in_dir = cat_set - set(name_path)
         if not_in_dir:
             raise ValueError(f'catHTM catalogs are not found in {dir}: {not_in_dir}')
 
         logging.info(f'catsHTM catalogs to work with: {cat}')
 
-        catalogs = tuple(SingleCatHtm(self, os.path.join(dir, c), c) for c in cat)
+        catalogs = tuple(SingleCatHtm(self, name_path[name], name) for name in cat)
         return catalogs
 
     def create_tables(self, on_exists: str):
