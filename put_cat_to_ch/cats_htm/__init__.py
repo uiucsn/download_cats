@@ -26,7 +26,7 @@ from put_cat_to_ch.utils import remove_files_and_directory
 __all__ = ('CatsHtmPutter', 'CatsHtmArgSubParser',)
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_name_dir_dict(data_dir):
     table = get_catalog_list(data_dir)
     d = {name: dest for name, dest in zip(table['Name'], table['dest'])}
