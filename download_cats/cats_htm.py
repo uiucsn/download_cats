@@ -14,10 +14,19 @@ BASE_URL = 'https://euler1.weizmann.ac.il/catsHTM/'
 HTML_TABLE_NAME = 'catsHTM_catalogs.html'
 
 
+def check_name_valid(name):
+    try:
+        get_CatDir(name)
+        return True
+    except ValueError:
+        return False
+
+
 def get_catalog_list(dest):
     url = urljoin(BASE_URL, HTML_TABLE_NAME)
     logging.info('Downloading catalog HTML table')
     table = ascii.read(url, format='html')
+    table = table[[check_name_valid(name) for name in table['Name']]]
     table['dest'] = [os.path.join(dest, get_CatDir(name)) for name in table['Name']]
     table['wget_url'] = [urljoin(BASE_URL, file) for file in table['wget file']]
     table['checksum_url'] = [urljoin(BASE_URL, file) for file in table['checksum']]
