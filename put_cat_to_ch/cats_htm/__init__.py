@@ -101,7 +101,9 @@ class SingleCatHtm:
         )
 
     def write_row_binary(self, file: BinaryIO):
+        logging.info(f'Writing HDF5 data into {file}')
         for path in self.hdf5_paths:
+            logging.info(f'Writing HDF5 file {path} into {file}')
             with h5py.File(path, mode='r') as hdf5:
                 for name, dataset in hdf5.items():
                     if not self.dataset_name_re.match(name):
