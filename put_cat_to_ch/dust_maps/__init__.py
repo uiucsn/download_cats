@@ -6,7 +6,6 @@ from typing import Generator
 import dustmaps.sfd
 import h3
 import numpy as np
-import pandas as pd
 from astropy.coordinates import SkyCoord
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
@@ -69,20 +68,29 @@ class SFDPutter(SingleDustMapPutter):
         gen = gen_h3index(self.h3_res)
         while True:
             chunk_gen = islice(gen, self.chunksize)
-            df = pd.DataFrame(
-                [(np.uint64(int(i, base=16)), *h3.h3_to_geo(i)) for i in chunk_gen],
-                columns=(f'h3index{self.h3_res}', 'dec', 'ra',)  # h3_to_geo returns (lat, lon)
-            )
-            if df.empty:
+            h3index, dec, ra = [], [], []
+            for index in chunk_gen:
+                h3index.append(np.uint64(int(index, base=16)))
+                dec_, ra_ = h3.h3_to_geo(index)
+                dec.append(dec_)
+                ra.append(ra_)
+            if len(h3index) == 0:
                 return
-            coords = SkyCoord(ra=df['ra'], dec=df['dec'], unit='deg')
-            df['eb_v'] = self.dustmap_query(coords).astype(np.float32)
-            yield df
+            h3index = np.array(h3index)
+            dec = np.array(dec)
+            ra = np.array(ra)
+            coords = SkyCoord(ra=ra, dec=dec, unit='deg')
+            eb_v = self.dustmap_query(coords).astype(np.float32)
+            yield h3index, dec, ra, eb_v
 
     def insert_data(self):
         logging.info('Inserting SDF dust map into ClickHouse')
-        for df in self.gen_data():
-            self.ch_client.client.insert_dataframe(f'INSERT INTO {self.db}.{self.table} VALUES', df)
+        for data in self.gen_data():
+            self.ch_client.client.execute(
+                f'INSERT INTO {self.db}.{self.table} VALUES',
+                data,
+                columnar=True,
+            )
 
 
 class DustMapsPutter(CHPutter):

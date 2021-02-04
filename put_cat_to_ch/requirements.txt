@@ -1,6 +1,5 @@
 clickhouse-driver[numpy]
 numpy
-pandas
 scipy
 h5py
 joblib
