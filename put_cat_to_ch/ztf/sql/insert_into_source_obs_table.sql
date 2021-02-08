@@ -31,8 +31,8 @@ INNER JOIN (
         (180.0 / pi()) AS rad_to_deg
     SELECT
         oid1,
-        rad_to_deg * atan2(avg(sin(deg_to_rad * ra2)), avg(cos(deg_to_rad * ra2))) AS ra,
-        rad_to_deg * atan2(avg(sin(deg_to_rad * dec2)), avg(cos(deg_to_rad * dec2))) AS dec
+        rad_to_deg * atan2(sum(sin(deg_to_rad * ra2)), sum(cos(deg_to_rad * ra2))) AS ra,
+        rad_to_deg * atan2(sum(sin(deg_to_rad * dec2)), sum(cos(deg_to_rad * dec2))) AS dec
     FROM {xmatch_db}.{xmatch_table}
     WHERE (oid1 <= oid2) AND (oid1 NOT IN
         (
