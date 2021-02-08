@@ -30,6 +30,7 @@ class ZtfPutter(CHPutter):
         # 'default_max_bytes_in_join': 1 << 35,
         'aggregation_memory_efficient_merge_threads': 1,
         # 'max_threads': 1,
+        'persistent': 0,  # turn off persistency of Set and Join tables
     }
 
     def __init__(self, *, dir, tmp_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
@@ -81,6 +82,10 @@ class ZtfPutter(CHPutter):
     @property
     def xmatch_table(self):
         return f'dr{self.dr:d}_xmatch_{self.radius_table_suffix}'
+
+    @property
+    def oids2_for_source_obs_table(self):
+        return f'dr{self.dr:d}_oids2_for_source_obs_{self.radius_table_suffix}'
 
     @property
     def source_obs_table(self):
@@ -309,6 +314,19 @@ class ZtfPutter(CHPutter):
             circle_table=self.circle_match_table,
         )
 
+    def create_oids2_for_insert_into_source_obs(self):
+        self.process_on_exists('drop', self.db, self.oids2_for_source_obs_table)
+        self.exe_query(
+            'create_oids2_for_insert_into_source_obs.sql',
+            db=self.db,
+            table=self.oids2_for_source_obs_table,
+            xmatch_db=self.db,
+            xmatch_table=self.xmatch_table,
+        )
+
+    def drop_oids2_for_insert_into_source_obs(self):
+        self.drop_table(self.db, self.oids2_for_source_obs_table)
+
     def create_source_obs_table(self, on_exists: str = 'fail'):
         """Create self cross-match table"""
         exists_ok = self.process_on_exists(on_exists, self.db, self.source_obs_table)
@@ -332,6 +350,8 @@ class ZtfPutter(CHPutter):
                 xmatch_table=self.xmatch_table,
                 begin_oid=begin_oid,
                 end_oid=end_oid,
+                oids2_db=self.db,
+                oids2_table=self.oids2_for_source_obs_table,
             )
 
     def create_source_meta_table(self, on_exists: str = 'fail'):
@@ -383,8 +403,12 @@ class ZtfPutter(CHPutter):
         self.insert_into_xmatch_table()
 
     def action_source_obs(self):
-        self.create_source_obs_table(on_exists=self.on_exists)
-        self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
+        self.create_oids2_for_insert_into_source_obs()
+        try:
+            self.create_source_obs_table(on_exists=self.on_exists)
+            self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
+        finally:
+            self.drop_oids2_for_insert_into_source_obs()
 
     def action_source_meta(self):
         self.create_source_meta_table(on_exists=self.on_exists)
