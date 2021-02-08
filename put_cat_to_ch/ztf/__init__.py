@@ -34,7 +34,8 @@ class ZtfPutter(CHPutter):
     }
 
     def __init__(self, *, dir, tmp_dir, dr, user, host, jobs, on_exists, start_field, end_field, radius,
-                 circle_match_insert_parts, circle_match_insert_interval, source_obs_insert_parts, clickhouse_settings,
+                 circle_match_insert_parts, circle_match_insert_interval, source_obs_insert_parts,
+                 source_obs_insert_interval, clickhouse_settings,
                  **_kwargs):
         self.data_dir = dir
         self.csv_dir = tmp_dir or self.data_dir
@@ -49,6 +50,7 @@ class ZtfPutter(CHPutter):
         self.circle_table_parts = circle_match_insert_parts
         self.circle_table_interval = circle_match_insert_interval
         self.source_obs_table_parts = source_obs_insert_parts
+        self.source_obs_table_interval = source_obs_insert_interval
         self.settings = self._default_settings
         self.settings.update(clickhouse_settings)
         super().__init__(
@@ -320,9 +322,13 @@ class ZtfPutter(CHPutter):
             table=self.source_obs_table,
         )
 
-    def insert_into_source_obs_table(self, parts: int = 1):
+    def insert_into_source_obs_table(self, parts: int = 1, interval: Union[int, str] = 'all'):
         grid = self.construct_quantile_grid(parts, dtype=np.uint64, column='oid1', table=self.xmatch_table)
-        for begin_oid, end_oid in zip(grid[:-1], grid[1:]):
+        if interval == 'all':
+            intervals = zip(grid[:-1], grid[1:])
+        else:
+            intervals = [(grid[interval], grid[interval + 1])]
+        for begin_oid, end_oid in intervals:
             self.exe_query(
                 'insert_into_source_obs_table.sql',
                 source_obs_db=self.db,
@@ -385,7 +391,7 @@ class ZtfPutter(CHPutter):
 
     def action_source_obs(self):
         self.create_source_obs_table(on_exists=self.on_exists)
-        self.insert_into_source_obs_table(parts=self.source_obs_table_parts)
+        self.insert_into_source_obs_table(parts=self.source_obs_table_parts, interval=self.source_obs_table_interval)
 
     def action_source_meta(self):
         self.create_source_meta_table(on_exists=self.on_exists)
@@ -418,3 +424,6 @@ class ZtfArgSubParser(ArgSubParser):
                                  'inserting all parts sequentially')
         parser.add_argument('--source-obs-insert-parts', default=1, type=int,
                             help='same as --circle-match-insert-parts but for source-obs table')
+        parser.add_argument('--source-obs-insert-interval', default='all',
+                            type=lambda s: s if s == 'all' else int(s),
+                            help='same as --circle-match-insert-interval but for source-obs table')
