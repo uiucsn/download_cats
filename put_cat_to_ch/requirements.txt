@@ -5,3 +5,5 @@ h5py
 joblib
 h3
 dustmaps
+BeautifulSoup4
+lxml
