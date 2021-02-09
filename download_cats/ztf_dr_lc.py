@@ -1,6 +1,5 @@
 import logging
 import os
-from multiprocessing import Pool
 from urllib.parse import urljoin
 
 from download_cats.base import BaseFetcher

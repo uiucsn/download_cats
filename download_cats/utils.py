@@ -107,7 +107,7 @@ class FileDownloader:
         self.md5.update(chunk)
 
 
-def download_file(url, path, checksum, session=None, retries=1):
+def download_file(url, path, checksum=None, session=None, retries=1):
     """Download file and optionally checks its md5 checksum
 
     See call signature in `FileDownloader`
@@ -118,7 +118,7 @@ def download_file(url, path, checksum, session=None, retries=1):
     - False if file exists and checksum matches
     """
     if os.path.exists(path):
-        if checksum == hash_file(path):
+        if checksum is not None and checksum == hash_file(path):
             logging.info(f'File {path} exists and checksum matches')
             return False
     with FileDownloader(url, path, checksum=checksum, session=session, retries=retries):
