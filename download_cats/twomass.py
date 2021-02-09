@@ -2,7 +2,6 @@ import logging
 import os
 from urllib.parse import urljoin
 
-import requests
 from bs4 import BeautifulSoup
 
 from download_cats.base import BaseFetcher
