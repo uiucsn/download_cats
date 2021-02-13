@@ -329,6 +329,7 @@ class ZtfPutter(CHPutter):
         else:
             intervals = [(grid[interval], grid[interval + 1])]
         for begin_oid, end_oid in intervals:
+            begin_fieldid = -np.inf if not np.isfinite(begin_oid) else int(begin_oid // 1000000000000)
             self.exe_query(
                 'insert_into_source_obs_table.sql',
                 source_obs_db=self.db,
@@ -339,6 +340,7 @@ class ZtfPutter(CHPutter):
                 xmatch_table=self.xmatch_table,
                 begin_oid=begin_oid,
                 end_oid=end_oid,
+                begin_fieldid=begin_fieldid,
             )
 
     def create_source_meta_table(self, on_exists: str = 'fail'):

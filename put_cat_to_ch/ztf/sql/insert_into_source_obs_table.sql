@@ -39,4 +39,4 @@ INNER JOIN
         GROUP BY oid1
     ) AS coord USING (sid)
 ) AS match USING (oid)
-WHERE (obs.catflags = 0) AND (obs.magerr > 0)
+WHERE (obs.catflags = 0) AND (obs.magerr > 0) AND (oid >= {begin_oid}) AND (fieldid >= {begin_fieldid})
