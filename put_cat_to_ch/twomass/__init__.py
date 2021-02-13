@@ -2,6 +2,7 @@ import logging
 from typing import List, Tuple
 
 import bs4
+from numpy.testing import assert_array_equal
 
 from download_cats.utils import url_text_content
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
@@ -95,16 +96,32 @@ class TwoMASSPutter(CHPutter):
             columns=self.ch_columns_str(),
         )
 
-    def insert_into_pcs_table(self):
-        self.shell_runner('insert_into_pcs.sh', self.dir, f'{self.db}.{self.psc_table}', self.host)
+    def test_psc_table(self):
+        # https://irsa.ipac.caltech.edu/2MASS/download/allsky/verification_query_psc.txt
+        desired = [470992970, 306810325437475788, 306815556538478936, 16902776758555, 32666066948, 2048692118201,
+                   388758631396659, 64617139213, 16048, 729878, 464456155, 79798372, 369187043, 64916239773,
+                   69388217174, 2670725813652, 29279563815]
+        rows = self.exe_query(
+            'test_psc.sql',
+            db=self.db,
+            table=self.psc_table,
+        )
+        actual = rows[0]
+        assert_array_equal(actual, desired)
 
-    default_actions = ('create', 'insert',)
+    def insert_into_pcs_table(self):
+        self.shell_runner('insert_into_psc.sh', self.dir, f'{self.db}.{self.psc_table}', self.host)
+
+    default_actions = ('create', 'insert', 'test',)
 
     def action_create(self):
         self.create_psc_table(self.on_exists)
 
     def action_insert(self):
         self.insert_into_pcs_table()
+
+    def action_test(self):
+        self.test_psc_table()
 
 
 class DustMapsArgSubParser(ArgSubParser):
