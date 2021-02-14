@@ -29,4 +29,4 @@ CREATE TABLE {if_not_exists} {db}.{table}
     duration_gri_narrow Float32
 )
 ENGINE = MergeTree
-ORDER BY sid
+ORDER BY h3index10

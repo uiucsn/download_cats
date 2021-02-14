@@ -14,6 +14,5 @@ CREATE TABLE {if_not_exists} {db}.{table}
     clrcoeff Float32
 )
 ENGINE = MergeTree()
-PARTITION BY intDiv(oid, 1000000000000)
-ORDER BY (h3index10, sid, mjd)
-PRIMARY KEY h3index10
+ORDER BY (sid, mjd)
+PRIMARY KEY sid
