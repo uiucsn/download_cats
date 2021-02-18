@@ -21,6 +21,13 @@ __all__ = ('ZtfPutter', 'ZtfArgSubParser',)
 CURRENT_ZTF_DR = 4
 
 
+PRIVATE_SURVEY_INTERVALS = {
+    2: (58194.0, 58299.0),
+    3: (58194.0, 58483.0),
+    4: (58194.0, 58664.0),
+}
+
+
 class ZtfPutter(CHPutter):
     db = 'ztf'
 
@@ -92,6 +99,18 @@ class ZtfPutter(CHPutter):
     @property
     def source_meta_table(self):
         return f'dr{self.dr:d}_source_meta_{self.radius_table_suffix}'
+
+    @property
+    def source_meta_short_table(self):
+        return f'dr{self.dr:d}_source_meta_short_{self.radius_table_suffix}'
+
+    @property
+    def short_mjd_min(self):
+        return PRIVATE_SURVEY_INTERVALS[self.dr][0]
+
+    @property
+    def short_mjd_max(self):
+        return PRIVATE_SURVEY_INTERVALS[self.dr][1]
 
     @staticmethod
     def extract_field_number(path: str) -> int:
@@ -359,9 +378,30 @@ class ZtfPutter(CHPutter):
             source_meta_table=self.source_meta_table,
             source_obs_db=self.db,
             source_obs_table=self.source_obs_table,
+            where_clause='',
         )
 
-    default_actions = ('gen_csv', 'csv_obs', 'rm_csv', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta',)
+    def create_source_meta_short_table(self, on_exists: str = 'fail'):
+        exists_ok = self.process_on_exists(on_exists, self.db, self.source_meta_short_table)
+        self.exe_query(
+            'create_source_meta_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.source_meta_short_table,
+        )
+
+    def insert_into_source_meta_short_table(self):
+        self.exe_query(
+            'insert_into_source_meta_table.sql',
+            source_meta_db=self.db,
+            source_meta_table=self.source_meta_short_table,
+            source_obs_db=self.db,
+            source_obs_table=self.source_obs_table,
+            where_clause=f'WHERE mjd >= {self.short_mjd_min} AND mjd <= {self.short_mjd_max}',
+        )
+
+    default_actions = ('gen_csv', 'csv_obs', 'rm_csv', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta',
+                       'source_meta_short',)
 
     def action_gen_csv(self):
         self.generate_csv()
@@ -398,6 +438,10 @@ class ZtfPutter(CHPutter):
     def action_source_meta(self):
         self.create_source_meta_table(on_exists=self.on_exists)
         self.insert_into_source_meta_table()
+
+    def action_source_meta_short(self):
+        self.create_source_meta_short_table(on_exists=self.on_exists)
+        self.insert_into_source_meta_short_table()
 
 
 class ZtfArgSubParser(ArgSubParser):

@@ -37,5 +37,5 @@ SELECT
         (arrayReduce('min', [maxIf(mjd, filter = 1), maxIf(mjd, filter = 2), maxIf(mjd, filter = 3)]) - arrayReduce('max', [minIf(mjd, filter = 1), minIf(mjd, filter = 2), minIf(mjd, filter = 3)])),
         0
     ) AS duration_gri_narrow
-FROM {source_obs_db}.{source_obs_table}
+FROM {source_obs_db}.{source_obs_table} {where_clause}
 GROUP BY sid
