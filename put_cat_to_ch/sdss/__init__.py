@@ -113,7 +113,7 @@ class SDSSPutter(CHPutter):
         logging.info(f'Inserting {path}')
         data = fits.getdata(path, memmap=False)
         data = np.asarray(data, dtype=self.le_dtype)
-        proc.communicate(data.tobytes())
+        proc.stdin.write(data)
 
     def insert_data(self):
         logging.info('Collecting FITS paths')
