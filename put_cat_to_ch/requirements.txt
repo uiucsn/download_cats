@@ -7,3 +7,4 @@ h3
 dustmaps
 BeautifulSoup4
 lxml
+astropy
