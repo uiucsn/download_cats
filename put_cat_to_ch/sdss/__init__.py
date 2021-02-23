@@ -110,12 +110,15 @@ class SDSSPutter(CHPutter):
         )
 
     def insert_fits(self, path, proc):
+        logging.info(f'Inserting {path}')
         data = fits.getdata(path, memmap=False)
         data = np.asarray(data, dtype=self.le_dtype)
         proc.communicate(data.tobytes())
 
     def insert_data(self):
+        logging.info('Collecting FITS paths')
         paths = sorted(glob.iglob(self.fits_glob_pattern, recursive=True))
+        logging.info('Starting shell insert script')
         with self.shell_runner.popen(
                 'insert.sh',
                 f'{self.db}.{self.table_name}',
