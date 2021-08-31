@@ -6,7 +6,7 @@ from download_cats.base import BaseFetcher
 from download_cats.utils import *
 
 
-CURRENT_DR = 4
+CURRENT_DR = 6
 
 
 class ZtfDrLcFetcher(BaseFetcher):
@@ -18,7 +18,11 @@ class ZtfDrLcFetcher(BaseFetcher):
         self.processes = cli_args.jobs
         self.dr = cli_args.dr
         self.base_url = f'https://irsa.ipac.caltech.edu/data/ZTF/lc_dr{self.dr}/'
-        self.checksums_url = urljoin(self.base_url, 'checksums.md5')
+        if self.dr == 6:
+            checksum_filename = 'checksum.md5'
+        else:
+            checksum_filename = 'checksums.md5'
+        self.checksums_url = urljoin(self.base_url, checksum_filename)
 
     def __call__(self):
         logging.info(f'Fetching ZTF DR{self.dr} light curve data')
