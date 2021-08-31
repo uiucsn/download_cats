@@ -9,12 +9,12 @@ CREATE TABLE {if_not_exists} {db}.{table}
         + bitShiftLeft(toUInt64(field), 16)
         + toUInt64(id)
     ),
-    long_objc_flags UInt64 MATERIALIZED bitShiftLeft(toUInt64(objc_flags2), 32) + toUInt64(objc_flags),
-    long_flags_u UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_u), 32) + toUInt64(flags_u),
-    long_flags_g UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_g), 32) + toUInt64(flags_g),
-    long_flags_r UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_r), 32) + toUInt64(flags_r),
-    long_flags_i UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_i), 32) + toUInt64(flags_i),
-    long_flags_z UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_z), 32) + toUInt64(flags_z),
+    long_objc_flags UInt64 MATERIALIZED bitShiftLeft(toUInt64(objc_flags2), 32) + toUInt32(objc_flags),
+    long_flags_u UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_u), 32) + toUInt32(flags_u),
+    long_flags_g UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_g), 32) + toUInt32(flags_g),
+    long_flags_r UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_r), 32) + toUInt32(flags_r),
+    long_flags_i UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_i), 32) + toUInt32(flags_i),
+    long_flags_z UInt64 MATERIALIZED bitShiftLeft(toUInt64(flags2_z), 32) + toUInt32(flags_z),
     h3index7 UInt64 MATERIALIZED geoToH3(ra, dec, 7),
     h3index10 UInt64 MATERIALIZED geoToH3(ra, dec, 10)
 )
