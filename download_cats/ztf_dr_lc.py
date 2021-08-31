@@ -21,7 +21,7 @@ class ZtfDrLcFetcher(BaseFetcher):
         self.checksums_url = urljoin(self.base_url, 'checksums.md5')
 
     def __call__(self):
-        logging.info(f'Fetching ZTF DR3 light curve data')
+        logging.info(f'Fetching ZTF DR{self.dr} light curve data')
         checksums = parse_checksums(url_text_content(self.checksums_url))
         with process_pool(self.cli_args) as pool:
             pool.starmap(
