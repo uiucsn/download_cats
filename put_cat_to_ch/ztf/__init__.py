@@ -169,7 +169,7 @@ class ZtfPutter(CHPutter):
 
     def insert_tar_gz_into_obs_table_worker(self, filepath: str):
         logging.info(f'Inserting {filepath} into {self.obs_table}')
-        self.shell_runner('insert_field_file.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
+        self.shell_runner('insert_txt_field_file.sh', filepath, f'{self.db}.{self.obs_table}', self.host)
 
     def insert_tar_gz_into_obs_table(self):
         logging.info(f'Inserting .tar.gz field files into {self.obs_table}')
