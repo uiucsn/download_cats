@@ -165,12 +165,12 @@ class ZtfPutter(CHPutter):
 
     def create_tmp_parquet_table(self, on_exists: str = 'drop'):
         """Create temporary table to insert parquet files"""
-        exists_ok = self.process_on_exists(on_exists, self.db, self.obs_table)
+        exists_ok = self.process_on_exists(on_exists, self.tmp_db, self.tmp_parquet_table)
         self.exe_query(
             'create_parquet_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
             db=self.tmp_db,
-            table=self.obs_table,
+            table=self.tmp_parquet_table,
         )
 
     def create_obs_table(self, on_exists: str = 'fail'):
