@@ -30,6 +30,7 @@ PRIVATE_SURVEY_INTERVALS = {
 
 class ZtfPutter(CHPutter):
     db = 'ztf'
+    tmp_db = 'ztf'
 
     _default_settings = {
         'max_bytes_before_external_group_by': 1 << 34,
@@ -77,6 +78,10 @@ class ZtfPutter(CHPutter):
         return f'{self.radius_arcsec:.2f}'.replace('.', '').rstrip('0')
 
     @property
+    def tmp_parquet_table(self):
+        return f'tmp_dr{self.dr:d}_parquet'
+
+    @property
     def obs_table(self):
         return f'dr{self.dr:d}_obs'
 
@@ -119,6 +124,17 @@ class ZtfPutter(CHPutter):
         field_no = int(match.group(1))
         return field_no
 
+    def parquet_dirs(self) -> List[str]:
+        """Field directories, e.g. ./0/field0202"""
+        path_template = os.path.join(self.data_dir, '*/field*')
+        dir_paths = sorted(glob(path_template))
+        return dir_paths
+
+    def parquet_files_in_dir(self, dir: str) -> List[str]:
+        path_template = os.path.join(self.data_dir, '**/*.parquet')
+        file_paths = sorted(glob(path_template, recursive=True))
+        return file_paths
+
     def tar_gz_files(self) -> List[str]:
         path_template = os.path.join(self.data_dir, 'field*.tar.gz')
         file_paths = sorted(glob(path_template))
@@ -142,10 +158,20 @@ class ZtfPutter(CHPutter):
         self.shell_runner('generate_csv.sh', input_path, output_path)
 
     def generate_csv(self):
-        logging.info('Generationg CSV field files')
+        logging.info('Generating CSV field files')
         os.makedirs(self.csv_dir, exist_ok=True)
         with ThreadPool(self.processes) as pool:
             pool.starmap(self.generate_csv_worker, zip(self.tar_gz_files(), self.csv_files()), chunksize=1)
+
+    def create_tmp_parquet_table(self, on_exists: str = 'drop'):
+        """Create temporary table to insert parquet files"""
+        exists_ok = self.process_on_exists(on_exists, self.db, self.obs_table)
+        self.exe_query(
+            'create_parquet_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.tmp_db,
+            table=self.obs_table,
+        )
 
     def create_obs_table(self, on_exists: str = 'fail'):
         """Create observations table"""
@@ -198,6 +224,31 @@ class ZtfPutter(CHPutter):
         logging.info(f'Removing CSV field files from {self.csv_dir}')
         remove_files_and_directory(self.csv_dir, self.csv_files())
 
+    def insert_parquet_into_tmp_parquet_table_worker(self, dir: str):
+        logging.info(f'Inserting {dir} info {self.tmp_parquet_table}')
+        paths = self.parquet_files_in_dir(dir)
+        for filepath in paths:
+            logging.info(f'Inserting {filepath} info {self.tmp_parquet_table}')
+            self.shell_runner('insert_parquet_file.sh', filepath, f'{self.tmp_db}.{self.tmp_parquet_table}', self.host)
+
+    def insert_parquet_into_tmp_parquet_table(self):
+        logging.info(f'Inserting .parquet files into {self.tmp_parquet_table}')
+        # We insert dir by dir, not file by file, because each dir represents the single field and ClickHouse table uses
+        # field ID as a partition index, and we wont insert data into the single partition in parallel
+        parquet_field_dirs = self.parquet_dirs()
+        with ThreadPool(self.processes) as pool:
+            pool.map(self.insert_parquet_into_tmp_parquet_table_worker, parquet_field_dirs, chunksize=1)
+
+    def insert_from_parquet_table_into_obs_table(self):
+        logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
+        self.exe_query(
+            'insert_into_obs_table_from_parquet_table.sql',
+            obs_db=self.db,
+            obs_table=self.obs_table,
+            parquet_db=self.tmp_db,
+            parquet_table=self.tmp_parquet_table,
+        )
+
     def insert_data_into_obs_meta_table(self):
         logging.info(f'Inserting data into {self.meta_table}')
         self.exe_query(
@@ -221,7 +272,7 @@ class ZtfPutter(CHPutter):
             table=self.circle_match_table,
         )
 
-    # TODO: replace bool with Literal[False] when python 3.7 support could be droped
+    # TODO: replace bool with Literal[False] when python 3.7 support could be dropped
     def get_quantiles(self, column: str, levels: Iterable[float], *, db: Optional[str] = None, table: str,
                       column_determinator: Union[None, bool, str] = None):
         """Get approximate quantiles of column destribution
@@ -284,7 +335,7 @@ class ZtfPutter(CHPutter):
         grid = [-np.inf, *q, np.inf]
         return grid
 
-    # TODO: replace str with Literal['all'] when python 3.7 could be droped
+    # TODO: replace str with Literal['all'] when python 3.7 could be dropped
     def insert_data_into_circle_table(self, parts: int = 1, interval: Union[int, str] = 'all'):
         """Insert data into cirle_match table
         
@@ -400,16 +451,36 @@ class ZtfPutter(CHPutter):
             where_clause=f'WHERE mjd >= {self.short_mjd_min} AND mjd <= {self.short_mjd_max}',
         )
 
-    default_actions = ('gen_csv', 'csv_obs', 'rm_csv', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta',
-                       'source_meta_short',)
+    default_actions = ('obs', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta', 'source_meta_short',)
+
+    def action_obs_csv(self):
+        try:
+            self.action_gen_csv()
+            self.action_csv_obs()
+        finally:
+            self.action_rm_csv()
+
+    def action_obs_parquet(self):
+        try:
+            self.create_tmp_parquet_table()
+            self.insert_parquet_into_tmp_parquet_table()
+        finally:
+            self.drop_table(self.tmp_db, self.tmp_parquet_table, not_exists_ok=True)
+
+    def action_obs(self):
+        # ZTF used text format in DR 1–4 and started to use parquet in DR 5
+        if self.dr < 5:
+            self.action_obs_csv()
+        else:
+            self.action_obs_parquet()
 
     def action_gen_csv(self):
         self.generate_csv()
 
     def action_csv_obs(self):
-            self.create_db(self.db)
-            self.create_obs_table(on_exists=self.on_exists)
-            self.insert_csv_into_obs_table(start=self.start_csv_field, end=self.end_csv_field)
+        self.create_db(self.db)
+        self.create_obs_table(on_exists=self.on_exists)
+        self.insert_csv_into_obs_table(start=self.start_csv_field, end=self.end_csv_field)
 
     def action_rm_csv(self):
         self.remove_csv()
@@ -456,14 +527,15 @@ class ZtfArgSubParser(ArgSubParser):
         super().add_arguments_to_parser(parser)
         parser.add_argument('--dr', default=CURRENT_ZTF_DR, type=int, help='ZTF DR number')
         parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
-        parser.add_argument('--start-field', default=None, type=int, help='specify the first field file to insert')
+        parser.add_argument('--start-field', default=None, type=int,
+                            help='specify the first field file to insert, applies to CSV files only')
         parser.add_argument('--end-field', default=None, type=int,
-                            help='specify the last field file to insert (it is included)')
+                            help='specify the last field file to insert (it is included), applies to CSV files only')
         parser.add_argument('-r', '--radius', default=0.2, type=float, help='cross-match radius, arcsec')
         parser.add_argument('--circle-match-insert-parts', default=1, type=int,
                             help='specifies the number of parts to split meta table to perform insert into '
                                  'circle-match table, execution time proportional to number of parts, '
-                                 'but RAM usage is inversly proportional to it')
+                                 'but RAM usage is inversely proportional to it')
         parser.add_argument('--circle-match-insert-interval', default='all',
                             type=lambda s: s if s == 'all' else int(s),
                             help='which part of meta table insert to circle table now, default is '
