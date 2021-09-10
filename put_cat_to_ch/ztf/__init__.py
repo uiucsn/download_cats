@@ -131,7 +131,7 @@ class ZtfPutter(CHPutter):
         return dir_paths
 
     def parquet_files_in_dir(self, dir: str) -> List[str]:
-        path_template = os.path.join(self.data_dir, '**/*.parquet')
+        path_template = os.path.join(dir, '**/*.parquet')
         file_paths = sorted(glob(path_template, recursive=True))
         return file_paths
 
