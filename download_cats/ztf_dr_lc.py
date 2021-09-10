@@ -18,7 +18,7 @@ class ZtfDrLcFetcher(BaseFetcher):
         self.processes = cli_args.jobs
         self.dr = cli_args.dr
         self.base_url = f'https://irsa.ipac.caltech.edu/data/ZTF/lc_dr{self.dr}/'
-        if self.dr == 6:
+        if self.dr >= 6:
             checksum_filename = 'checksum.md5'
         else:
             checksum_filename = 'checksums.md5'
