@@ -464,6 +464,8 @@ class ZtfPutter(CHPutter):
         try:
             self.create_tmp_parquet_table()
             self.insert_parquet_into_tmp_parquet_table()
+            self.create_db(self.db)
+            self.create_obs_table(on_exists=self.on_exists)
             self.insert_from_parquet_table_into_obs_table()
         finally:
             self.drop_table(self.tmp_db, self.tmp_parquet_table, not_exists_ok=True)
