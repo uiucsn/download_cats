@@ -239,35 +239,15 @@ class ZtfPutter(CHPutter):
         with ThreadPool(self.processes) as pool:
             pool.map(self.insert_parquet_into_tmp_parquet_table_worker, parquet_field_dirs, chunksize=1)
 
-    def select_fieldid_from_parquet_table(self):
-        logging.info(f'Selecting fieldid from {self.tmp_parquet_table}')
-        query = f'''
-        SELECT
-            fieldid
-        FROM {self.tmp_db}.{self.tmp_parquet_table}
-        GROUP BY fieldid
-        '''
-        result = self.execute(query)
-        fields = sorted(int(row[0]) for row in result)
-        logging.info(f'Fields selected from {self.tmp_parquet_table}: {fields}')
-        return fields
-
-    def insert_from_parquet_table_into_obs_table_worker(self, fieldid):
-        logging.info(f'Inserting field {fieldid} into {self.obs_table} from {self.tmp_parquet_table}')
+    def insert_from_parquet_table_into_obs_table(self):
+        logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
         self.exe_query(
             'insert_into_obs_table_from_parquet_table.sql',
             obs_db=self.db,
             obs_table=self.obs_table,
             parquet_db=self.tmp_db,
             parquet_table=self.tmp_parquet_table,
-            fieldid=fieldid,
         )
-
-    def insert_from_parquet_table_into_obs_table(self):
-        fields = self.select_fieldid_from_parquet_table()
-        logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
-        with ThreadPool(self.processes) as pool:
-            pool.map(self.insert_from_parquet_table_into_obs_table_worker, fields, chunksize=1)
 
     def insert_data_into_obs_meta_table(self):
         logging.info(f'Inserting data into {self.meta_table}')
