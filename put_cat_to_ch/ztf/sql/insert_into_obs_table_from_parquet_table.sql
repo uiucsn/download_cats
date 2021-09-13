@@ -19,3 +19,4 @@ ARRAY JOIN
     magerr,
     clrcoeff,
     catflags
+WHERE fieldid = {fieldid}

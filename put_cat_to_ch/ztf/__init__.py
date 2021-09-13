@@ -239,15 +239,34 @@ class ZtfPutter(CHPutter):
         with ThreadPool(self.processes) as pool:
             pool.map(self.insert_parquet_into_tmp_parquet_table_worker, parquet_field_dirs, chunksize=1)
 
-    def insert_from_parquet_table_into_obs_table(self):
-        logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
+    def select_fieldid_from_parquet_table(self):
+        logging.info(f'Selecting fieldid from {self.tmp_parquet_table}')
+        query = f'''
+        SELECT
+            fieldid
+        FROM {self.tmp_db}.{self.tmp_parquet_table}
+        GROUP BY fieldid
+        '''
+        result = self.execute(query)
+        fields = sorted(int(row[0]) for row in result)
+        return fields
+
+    def insert_from_parquet_table_into_obs_table_worker(self, fieldid):
+        logging.info(f'Inserting field {fieldid} into {self.obs_table} from {self.tmp_parquet_table}')
         self.exe_query(
             'insert_into_obs_table_from_parquet_table.sql',
             obs_db=self.db,
             obs_table=self.obs_table,
             parquet_db=self.tmp_db,
             parquet_table=self.tmp_parquet_table,
+            fieldid=fieldid,
         )
+
+    def insert_from_parquet_table_into_obs_table(self):
+        fields = self.select_fieldid_from_parquet_table()
+        logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
+        with ThreadPool(self.processes) as pool:
+            pool.map(self.select_fieldid_from_parquet_table, fields, chunksize=1)
 
     def insert_data_into_obs_meta_table(self):
         logging.info(f'Inserting data into {self.meta_table}')
@@ -461,12 +480,11 @@ class ZtfPutter(CHPutter):
             self.action_rm_csv()
 
     def action_obs_parquet(self):
-        self.create_tmp_parquet_table()
-        self.insert_parquet_into_tmp_parquet_table()
-        self.create_db(self.db)
-        self.create_obs_table(on_exists=self.on_exists)
-        self.insert_from_parquet_table_into_obs_table()
-        # self.drop_table(self.tmp_db, self.tmp_parquet_table, not_exists_ok=True)
+        try:
+            self.action_parquet()
+            self.action_parquet_obs()
+        finally:
+            self.action_rm_parquet()
 
     def action_obs(self):
         # ZTF used text format in DR 1–4 and started to use parquet in DR 5
@@ -490,6 +508,18 @@ class ZtfPutter(CHPutter):
         self.create_db(self.db)
         self.create_obs_table(on_exists=self.on_exists)
         self.insert_tar_gz_into_obs_table()
+
+    def action_parquet(self):
+        self.create_tmp_parquet_table()
+        self.insert_parquet_into_tmp_parquet_table()
+
+    def action_parquet_obs(self):
+        self.create_db(self.db)
+        self.create_obs_table(on_exists=self.on_exists)
+        self.insert_from_parquet_table_into_obs_table()
+
+    def action_rm_parquet(self):
+        self.drop_table(self.tmp_db, self.tmp_parquet_table, not_exists_ok=True)
 
     def action_meta(self):
         self.create_obs_meta_table(on_exists=self.on_exists)
