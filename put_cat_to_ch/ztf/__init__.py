@@ -249,6 +249,7 @@ class ZtfPutter(CHPutter):
         '''
         result = self.execute(query)
         fields = sorted(int(row[0]) for row in result)
+        logging.info(f'Fields selected from {self.tmp_parquet_table}: {fields}')
         return fields
 
     def insert_from_parquet_table_into_obs_table_worker(self, fieldid):
@@ -266,7 +267,7 @@ class ZtfPutter(CHPutter):
         fields = self.select_fieldid_from_parquet_table()
         logging.info(f'Inserting data into {self.obs_table} from {self.tmp_parquet_table}')
         with ThreadPool(self.processes) as pool:
-            pool.map(self.select_fieldid_from_parquet_table, fields, chunksize=1)
+            pool.map(self.insert_from_parquet_table_into_obs_table_worker, fields, chunksize=1)
 
     def insert_data_into_obs_meta_table(self):
         logging.info(f'Inserting data into {self.meta_table}')
