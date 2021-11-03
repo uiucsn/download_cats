@@ -18,7 +18,7 @@ from put_cat_to_ch.ztf import sh, sql
 __all__ = ('ZtfPutter', 'ZtfArgSubParser',)
 
 
-CURRENT_ZTF_DR = 4
+CURRENT_ZTF_DR = 8
 
 
 PRIVATE_SURVEY_INTERVALS = {
@@ -468,11 +468,14 @@ class ZtfPutter(CHPutter):
             self.action_rm_parquet()
 
     def action_obs(self):
-        # ZTF used text format in DR 1–4 and started to use parquet in DR 5
-        if self.dr < 5:
+        # ZTF used text format in DR 1–4 and started to use parquet in DR 5. But parquet schema is changed in DR 8 to
+        # have better time resolution and we wouldn't support DR 5-7
+        if 1 <= self.dr <= 4:
             self.action_obs_csv()
-        else:
+        elif self.dr >= 8:
             self.action_obs_parquet()
+        else:
+            raise ValueError(f'DR {self.dr} is not supported')
 
     def action_gen_csv(self):
         self.generate_csv()

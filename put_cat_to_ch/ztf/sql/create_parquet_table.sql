@@ -7,7 +7,7 @@ CREATE TABLE {if_not_exists} {db}.{table}
     `objra` Float32,
     `objdec` Float32,
     `nepochs` Int64,
-    `hmjd` Array(Float32),
+    `hmjd` Array(Float64),
     `mag` Array(Float32),
     `magerr` Array(Float32),
     `clrcoeff` Array(Float32),

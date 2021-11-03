@@ -7,14 +7,14 @@ SELECT
     rcid,
     toFloat64(objra) AS ra,
     toFloat64(objdec) AS dec,
-    mjd,
+    hmjd AS mjd,
     mag,
     magerr,
     clrcoeff,
     catflags
 FROM {parquet_db}.{parquet_table}
 ARRAY JOIN
-    arrayMap(x -> toFloat64(x), hmjd) AS mjd,
+    hmjd,
     mag,
     magerr,
     clrcoeff,
