@@ -454,17 +454,11 @@ class ZtfPutter(CHPutter):
     default_actions = ('obs', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta', 'source_meta_short',)
 
     def action_obs_csv(self):
-        try:
-            self.action_gen_csv()
-        finally:
-            self.action_rm_csv()
+        self.action_gen_csv()
         self.action_csv_obs()
 
     def action_obs_parquet(self):
-        try:
-            self.action_parquet()
-        finally:
-            self.action_rm_parquet()
+        self.action_parquet()
         self.action_parquet_obs()
 
     def action_obs(self):
