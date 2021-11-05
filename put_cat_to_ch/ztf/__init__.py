@@ -456,16 +456,16 @@ class ZtfPutter(CHPutter):
     def action_obs_csv(self):
         try:
             self.action_gen_csv()
-            self.action_csv_obs()
         finally:
             self.action_rm_csv()
+        self.action_csv_obs()
 
     def action_obs_parquet(self):
         try:
             self.action_parquet()
-            self.action_parquet_obs()
         finally:
             self.action_rm_parquet()
+        self.action_parquet_obs()
 
     def action_obs(self):
         # ZTF used text format in DR 1–4 and started to use parquet in DR 5. But parquet schema is changed in DR 8 to
