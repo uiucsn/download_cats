@@ -1,4 +1,4 @@
-INSERT INTO {obs_db}.{obs_table}
+INSERT INTO {olc_db}.{olc_table}
 SELECT
     oid,
     filter,

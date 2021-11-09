@@ -82,6 +82,14 @@ class ZtfPutter(CHPutter):
         return f'tmp_dr{self.dr:d}_parquet'
 
     @property
+    def olc_table(self):
+        return f'dr{self.dr:d}_olc'
+
+    @property
+    def oid_coord_table(self):
+        return f'dr{self.dr:d}_oid_coord'
+
+    @property
     def obs_table(self):
         return f'dr{self.dr:d}_obs'
 
@@ -171,6 +179,45 @@ class ZtfPutter(CHPutter):
             if_not_exists=self.if_not_exists(exists_ok),
             db=self.tmp_db,
             table=self.tmp_parquet_table,
+        )
+
+    def create_olc_table(self, on_exists: str = 'fail'):
+        """Create object light-curve table"""
+        exists_ok = self.process_on_exists(on_exists, self.db, self.olc_table)
+        self.exe_query(
+            'create_olc_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.obs_table,
+        )
+
+    def insert_into_olc_table(self):
+        logging.info(f'Inserting data into {self.olc_table}')
+        self.exe_query(
+            'insert_into_olc_table_from_parquet_table.sql',
+            olc_db=self.db,
+            olc_table=self.olc_table,
+            parquet_db=self.tmp_db,
+            parquet_table=self.tmp_parquet_table,
+        )
+
+    def create_oid_coord_table(self, on_exists: str = 'fail'):
+        """Create OID-based "index" table for olc table"""
+        exists_ok = self.process_on_exists(on_exists, self.db, self.olc_table)
+        self.exe_query(
+            'create_oid_coord_table.sql',
+            if_not_exists=self.if_not_exists(exists_ok),
+            db=self.db,
+            table=self.oid_coord_table,
+        )
+
+    def insert_into_oid_coord_table(self):
+        self.exe_query(
+            'insert_into_oid_coord_table.sql',
+            oid_coord_db=self.db,
+            oid_coord_table=self.oid_coord_table,
+            olc_db=self.db,
+            olc_table=self.olc_table,
         )
 
     def create_obs_table(self, on_exists: str = 'fail'):
@@ -498,6 +545,14 @@ class ZtfPutter(CHPutter):
 
     def action_rm_parquet(self):
         self.drop_table(self.tmp_db, self.tmp_parquet_table, not_exists_ok=True)
+
+    def action_olc(self):
+        self.create_olc_table(on_exists=self.on_exists)
+        self.insert_into_olc_table()
+
+    def action_oid_coord(self):
+        self.create_oid_coord_table(on_exists=self.on_exists)
+        self.insert_into_oid_coord_table()
 
     def action_meta(self):
         self.create_obs_meta_table(on_exists=self.on_exists)
