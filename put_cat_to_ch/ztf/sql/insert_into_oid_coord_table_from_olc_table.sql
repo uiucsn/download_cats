@@ -5,4 +5,4 @@ SELECT
     ra,
     dec,
     h3index10
-FROM {olc_db}.{old_table}
+FROM {olc_db}.{olc_table}
