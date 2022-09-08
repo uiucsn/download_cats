@@ -6,7 +6,7 @@ from download_cats.base import BaseFetcher
 from download_cats.utils import *
 
 
-CURRENT_DR = 8
+CURRENT_DR = 11
 
 
 class ZtfDrLcFetcher(BaseFetcher):
