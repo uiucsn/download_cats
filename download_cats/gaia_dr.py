@@ -9,7 +9,7 @@ from download_cats.utils import *
 CURRENT_DR = 'dr3'
 
 
-class ZtfDrLcFetcher(BaseFetcher):
+class GaiaDrLcFetcher(BaseFetcher):
     catalog_name = 'Gaia'
 
     def __init__(self, cli_args):
@@ -37,4 +37,4 @@ class ZtfDrLcFetcher(BaseFetcher):
                             help='Gaia data release version to download, like "dr3" or "edr3"')
 
 
-__all__ = ('ZtfDrLcFetcher',)
+__all__ = ('GaiaDrLcFetcher',)
