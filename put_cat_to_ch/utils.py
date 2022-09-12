@@ -2,6 +2,8 @@ import logging
 import os
 from typing import Set
 
+import numpy as np
+
 
 def subclasses(cls: type) -> Set[type]:
     return set(cls.__subclasses__()).union(subcls for c in cls.__subclasses__() for subcls in subclasses(c))

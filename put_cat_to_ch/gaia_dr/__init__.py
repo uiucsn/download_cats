@@ -16,7 +16,7 @@ from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.gaia_dr import sh, sql
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
-from put_cat_to_ch.utils import remove_files_and_directory, np_dtype_to_ch
+from put_cat_to_ch.utils import np_dtype_to_ch
 
 __all__ = ('GaiaDrPutter', 'GaiaDrArgSubParser',)
 
