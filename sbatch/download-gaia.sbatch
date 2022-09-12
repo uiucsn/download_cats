@@ -24,11 +24,10 @@
 # Note: SLURM defaults to running jobs in the directory where
 # they are submitted, no need for cd'ing to $SLURM_SUBMIT_DIR
 
-module load python/3
-export PYTHONPATH="$HOME/.local/lib/python3.7/site-packages:$PYTHONPATH"
+module load anaconda/2022-May/3
+conda activate /projects/caps/uiucsn/github.com/uiucsn/download_cats/conda-env
+export PYTHONPATH=/projects/caps/uiucsn/github.com/uiucsn/download_cats/conda-env/lib/python3.10/site-packages
 
-PROJECT_DIR="$HOME/download_cats/"
 DEST="/projects/caps/uiucsn/gdr3-gaia_source/"
 
-cd $PROJECT_DIR
-python3 -m download_cats -vvv -d "$DEST" -j12 gaia --dr=dr3
+python3.10 -m download_cats -vvv -d "$DEST" -j12 gaia --dr=dr3
