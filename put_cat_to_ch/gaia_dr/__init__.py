@@ -23,89 +23,9 @@ from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.gaia_dr import sh, sql
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
-from put_cat_to_ch.utils import remove_files_and_directory, np_dtype_field_to_ch
+from put_cat_to_ch.utils import remove_files_and_directory, np_dtype_to_ch
 
 __all__ = ('GaiaDrPutter', 'GaiaDrArgSubParser',)
-
-
-class SingleCatHtm:
-    def __init__(self, putter: CatsHtmPutter, path: str, name: str):
-        logging.info(f'Constructing SingleCatHtm instance for {name}')
-
-        self.putter = putter
-        self.path = path
-        self.name = name
-        self.htm_col_cell_path = os.path.join(self.path, f'{self.name}_htmColCell.mat')
-        self.htm_col_cell = loadmat(self.htm_col_cell_path)
-        self.col_names = tuple(np.concatenate(self.htm_col_cell['ColCell'].flatten()))
-        self.col_units = tuple('dimensionless' if a.size == 0 else a[0] for a in self.htm_col_cell['ColUnits'].flat)
-        self.hdf5_paths = tuple(sorted(glob(os.path.join(self.path, '*.hdf5'))))
-
-        self._check_columns(self._prepare_column_names_for_ch(), self.col_units)
-
-    def _check_columns(self, ch_names: Tuple[str], units: Tuple[str]):
-        names_counter = Counter(ch_names)
-        if len(ch_names) != len(names_counter):
-            repeated = [k for k, v in names_counter.items() if v > 1]
-            msg = f'Catalog {self.name} has some column repeated: {repeated}'
-            logging.error(msg)
-            raise NotImplementedError(msg)
-
-    @property
-    def db(self):
-        return self.putter.db
-
-    @property
-    def table(self):
-        return self.name
-
-    @property
-    def ch_column_names(self) -> Tuple[str]:
-        return tuple(col.lower() for col in self.col_names)
-
-    def _prepare_column_names_for_ch(self) -> List[str]:
-        cols = list(self.ch_column_names)
-        logging.info(f'cols = {cols}')
-        if self.name == 'AKARI':
-            cols[cols.index('ra')] = 'ra_rad'
-            cols[cols.index('dec')] = 'dec_rad'
-            cols[cols.index('ra')] = 'ra_arcsec'
-            cols[cols.index('dec')] = 'dec_arcsec'
-        elif self.name == 'HSCv2':
-            cols[cols.index('matchra')] = 'ra_rad'
-            cols[cols.index('matchdec')] = 'dec_rad'
-        else:
-            cols[cols.index('ra')] = 'ra_rad'
-            cols[cols.index('dec')] = 'dec_rad'
-        return cols
-
-    def ch_columns_str(self) -> str:
-        s = ',\n    '.join(f'`{col.lower()}` Float64' for col in self._prepare_column_names_for_ch())
-        return s
-
-    def create_table(self, on_exists: str = 'fail'):
-        exists_ok = self.putter.process_on_exists(on_exists, self.db, self.table)
-        self.putter.exe_query(
-            'create_table.sql',
-            if_not_exists=self.putter.if_not_exists(exists_ok),
-            db=self.db,
-            table=self.table,
-            columns=self.ch_columns_str(),
-        )
-
-    def write_row_binary(self, file: BinaryIO):
-        logging.info(f'Writing HDF5 data into {file}')
-        for path in self.hdf5_paths:
-            logging.info(f'Writing HDF5 file {path} into {file}')
-            with h5py.File(path, mode='r') as hdf5:
-                for name, dataset in hdf5.items():
-                    if not self.dataset_name_re.match(name):
-                        continue
-                    transposed = dataset[:].T.copy()
-                    file.write(transposed)
-
-    def __str__(self):
-        return f'catsHTM catalog {self.name} located at {self.path}'
 
 
 class GaiaDrPutter(CHPutter):
@@ -143,8 +63,8 @@ class GaiaDrPutter(CHPutter):
 
     @property
     def ch_columns(self) -> Dict[str, str]:
-        return dict(np_dtype_field_to_ch(column.name, column.dtype, nullable=hasattr(column, 'mask'))
-                    for column in self.first_table.itercols())
+        return {column.name: np_dtype_to_ch(column.dtype, nullable=hasattr(column, 'mask'))
+                for column in self.first_table.itercols()}
 
     @property
     def ch_columns_str(self) -> str:

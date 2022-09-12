@@ -12,12 +12,22 @@ from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.sdss import sh, sql
 from put_cat_to_ch.shell_runner import ShellRunner
-from put_cat_to_ch.utils import np_dtype_field_to_ch
+from put_cat_to_ch.utils import np_dtype_to_ch
 
 DEFAULT_SDSS_DR = 16
 
 
 SDSS_FILTERS = tuple('ugriz')
+
+
+def np_dtype_field_to_ch(name, dtype):
+    ch_name = name.lower()
+    if np.issubdtype(dtype, np.void):
+        sub_dtype, shape = dtype.subdtype
+        assert shape == (len(SDSS_FILTERS),)
+        return sum((np_dtype_field_to_ch(f'{ch_name}_{fltr}', sub_dtype) for fltr in SDSS_FILTERS), [])
+    ch_type = np_dtype_to_ch(dtype)
+    return [(ch_name, ch_type)]
 
 
 class SDSSPutter(CHPutter):
