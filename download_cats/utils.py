@@ -58,6 +58,7 @@ class FileDownloader:
         self.url = url
         self.path = path
         self.session = session or requests
+        assert retries > 0
         self.retries = retries
         self.checksum = checksum
         if self.checksum is not None:
@@ -90,10 +91,11 @@ class FileDownloader:
             try:
                 return self.download()
             except HashSumCheckFailed as e:
-                pass
+                exception = e
             except requests.exceptions.RequestException as e:
+                exception = e
                 sleep(1)
-        raise e
+        raise exception
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.fh.close()
