@@ -42,6 +42,7 @@ def _np_dtype_to_ch(dtype: type, *, str_is_bytes: bool = True) -> str:
         n = dtype.itemsize
         return f'FixedString({n})'
     if np.issubdtype(dtype, np.str_):
+        # If we believe that all our strings are ASCII, we can interpret them as bytes
         if str_is_bytes:
             n = dtype.itemsize // 4
         else:
