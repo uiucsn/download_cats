@@ -13,7 +13,7 @@ from typing import BinaryIO, Iterable, List, Tuple
 import astropy.table
 import h5py
 import numpy as np
-from astropy.ascii import read
+from astropy.io.ascii import read
 from download_cats.cats_htm import get_catalog_list
 from download_cats.gaia_dr import CURRENT_DR as CURRENT_GAIA_DR
 from joblib import delayed, Parallel, parallel_backend
