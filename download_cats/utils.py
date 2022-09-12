@@ -15,7 +15,7 @@ class HashSumCheckFailed(RuntimeError):
     pass
 
 
-def hash_file(path, chink_size=DEFAULT_READ_CHUNK):
+def hash_file(path, chunk_size=DEFAULT_READ_CHUNK):
     """Returns hex md5 checksum of file"""
     if not os.path.exists(path):
         logging.info(f"File {path} doesn't exist, md5 cannot be computed")
@@ -24,7 +24,7 @@ def hash_file(path, chink_size=DEFAULT_READ_CHUNK):
     with open(path, 'rb') as fh:
         m = md5()
         while True:
-            chunk = fh.read(chink_size)
+            chunk = fh.read(chunk_size)
             if not chunk:
                 break
             m.update(chunk)
