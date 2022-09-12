@@ -3,21 +3,14 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import re
-from collections import Counter
-from functools import lru_cache, cached_property
+from functools import cached_property
 from glob import glob
 from multiprocessing.pool import ThreadPool
-from typing import BinaryIO, Iterable, List, Tuple
+from typing import Dict, List
 
+import astropy.io.ascii
 import astropy.table
-import h5py
-import numpy as np
-from astropy.io.ascii import read
-from download_cats.cats_htm import get_catalog_list
 from download_cats.gaia_dr import CURRENT_DR as CURRENT_GAIA_DR
-from joblib import delayed, Parallel, parallel_backend
-from scipy.io import loadmat
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.gaia_dr import sh, sql
@@ -59,7 +52,7 @@ class GaiaDrPutter(CHPutter):
     def first_table(self) -> astropy.table.Table:
         first_file = self.input_files[0]
         logging.info(f'Getting columns from {first_file}')
-        return read(first_file, format='ecsv', fill_values=('null', '0'))
+        return astropy.io.ascii.read(first_file, format='ecsv', fill_values=('null', '0'))
 
     @property
     def ch_columns(self) -> Dict[str, str]:
@@ -83,7 +76,7 @@ class GaiaDrPutter(CHPutter):
 
     def insert_single_file(self, file: str):
         logging.info(f'Inserting {file} into {self.db}.{self.table_name}')
-        self.shell_runner.run('insert.sh', file, f'{self.db}.{self.table_name}', self.host)
+        self.shell_runner('insert.sh', file, f'{self.db}.{self.table_name}', self.host)
 
     def insert(self):
         with ThreadPool(processes=self.processes) as pool:
