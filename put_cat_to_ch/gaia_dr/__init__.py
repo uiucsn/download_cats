@@ -100,6 +100,6 @@ class GaiaDrArgSubParser(ArgSubParser):
     @classmethod
     def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
         super().add_arguments_to_parser(parser)
-        parser.add_argument('--dr', default=CURRENT_GAIA_DR, type=int, help='Gaia ZTF DR like "dr3" or "edr3"')
+        parser.add_argument('--dr', default=CURRENT_GAIA_DR, help='Gaia ZTF DR like "dr3" or "edr3"')
         parser.add_argument('-j', '--jobs', type=int, default=1,
                             help='number of jobs "insert" actions')
