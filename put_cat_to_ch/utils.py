@@ -26,7 +26,7 @@ def remove_files_and_directory(dir, files):
         logging.warning(f'dir {dir} is not removed, probably it is not empty')
 
 
-def _np_dtype_to_ch(dtype: type) -> str:
+def _np_dtype_to_ch(dtype: type, *, str_is_bytes: bool = True) -> str:
     dtype = dtype.newbyteorder('<')
     if np.issubdtype(dtype, np.bool_):
         return 'UInt8'
@@ -41,11 +41,17 @@ def _np_dtype_to_ch(dtype: type) -> str:
     if np.issubdtype(dtype, np.bytes_):
         n = dtype.itemsize
         return f'FixedString({n})'
+    if np.issubdtype(dtype, np.str_):
+        if str_is_bytes:
+            n = dtype.itemsize // 4
+        else:
+            n = dtype.itemsize
+        return f'FixedString({n})'
     raise ValueError(f"Don't know how to convert {dtype} to ClickHouse column type")
 
 
-def np_dtype_to_ch(dtype: type, nullable: bool = False) -> str:
-    ch_type = _np_dtype_to_ch(dtype)
+def np_dtype_to_ch(dtype: type, *, nullable: bool = False, str_is_bytes: bool = False) -> str:
+    ch_type = _np_dtype_to_ch(dtype, str_is_bytes=str_is_bytes)
     if nullable:
         ch_type = f'Nullable({ch_type})'
     return ch_type
