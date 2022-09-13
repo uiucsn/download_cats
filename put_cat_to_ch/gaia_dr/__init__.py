@@ -46,7 +46,9 @@ class GaiaDrPutter(CHPutter):
 
     @cached_property
     def input_files(self) -> List[str]:
-        return sorted(glob(os.path.join(self.data_dir, 'GaiaSource*.csv.gz')))
+        files = sorted(glob(os.path.join(self.data_dir, 'GaiaSource*.csv.gz')))
+        assert len(files) > 0, f'No files found in {self.data_dir}'
+        return files
 
     @cached_property
     def first_table(self) -> astropy.table.Table:
