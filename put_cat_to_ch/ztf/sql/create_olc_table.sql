@@ -6,6 +6,7 @@ CREATE TABLE {if_not_exists} {db}.{table}
     rcid UInt8 CODEC(Delta, LZ4),
     ra Float64 CODEC(Gorilla),
     dec Float64 CODEC(Gorilla),
+    nobs_w_bad UInt16 CODEC(T64, LZ4),
     h3index10 UInt64 MATERIALIZED geoToH3(ra, dec, 10) CODEC(Delta, LZ4),
     mjd Array(Float64),
     mag Array(Float32),
