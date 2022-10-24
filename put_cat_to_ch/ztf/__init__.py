@@ -188,7 +188,7 @@ class ZtfPutter(CHPutter):
             'create_olc_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
             db=self.db,
-            table=self.obs_table,
+            table=self.olc_table,
         )
 
     def insert_into_olc_table(self):
@@ -203,7 +203,7 @@ class ZtfPutter(CHPutter):
 
     def create_oid_coord_table(self, on_exists: str = 'fail'):
         """Create OID-based "index" table for olc table"""
-        exists_ok = self.process_on_exists(on_exists, self.db, self.olc_table)
+        exists_ok = self.process_on_exists(on_exists, self.db, self.oid_coord_table)
         self.exe_query(
             'create_oid_coord_table.sql',
             if_not_exists=self.if_not_exists(exists_ok),
