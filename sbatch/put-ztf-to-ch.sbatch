@@ -43,7 +43,7 @@ module load anaconda/2022-May/3
 conda activate /projects/caps/uiucsn/github.com/uiucsn/download_cats/conda-env
 export PYTHONPATH=/projects/caps/uiucsn/github.com/uiucsn/download_cats/conda-env/lib/python3.10/site-packages
 
-python3.10 -m put_cat_to_ch -vvv -d "$DATA_ROOT" --host="$HOST" -e drop ztf --dr=$DR -a obs
+python3.10 -m put_cat_to_ch -vvv -d "$DATA_ROOT" --host="$HOST" -e drop ztf --dr=$DR -a parquet
 
 
 #################################

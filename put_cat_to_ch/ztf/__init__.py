@@ -11,7 +11,7 @@ import numpy as np
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.putter import CHPutter
 from put_cat_to_ch.shell_runner import ShellRunner
-from put_cat_to_ch.utils import remove_files_and_directory
+from put_cat_to_ch.utils import is_parquet_file_empty, remove_files_and_directory
 from put_cat_to_ch.ztf import sh, sql
 
 
@@ -275,6 +275,9 @@ class ZtfPutter(CHPutter):
         logging.info(f'Inserting {dir} info {self.tmp_parquet_table}')
         paths = self.parquet_files_in_dir(dir)
         for filepath in paths:
+            if is_parquet_file_empty(filepath):
+                logging.warning(f'Parquet file {filepath} is empty, skipping')
+                continue
             logging.info(f'Inserting {filepath} info {self.tmp_parquet_table}')
             self.shell_runner('insert_parquet_file.sh', filepath, f'{self.tmp_db}.{self.tmp_parquet_table}', self.host)
 
