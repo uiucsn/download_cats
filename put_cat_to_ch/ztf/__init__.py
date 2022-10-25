@@ -86,8 +86,8 @@ class ZtfPutter(CHPutter):
         return f'dr{self.dr:d}_olc'
 
     @property
-    def oid_coord_table(self):
-        return f'dr{self.dr:d}_oid_coord'
+    def obs_over_olc_view(self):
+        return self.obs_table
 
     @property
     def obs_table(self):
@@ -201,21 +201,12 @@ class ZtfPutter(CHPutter):
             parquet_table=self.tmp_parquet_table,
         )
 
-    def create_oid_coord_table(self, on_exists: str = 'fail'):
-        """Create OID-based "index" table for olc table"""
-        exists_ok = self.process_on_exists(on_exists, self.db, self.oid_coord_table)
+    def create_obs_view_over_olc(self):
+        """Create obs-like view over olc table"""
         self.exe_query(
-            'create_oid_coord_table.sql',
-            if_not_exists=self.if_not_exists(exists_ok),
-            db=self.db,
-            table=self.oid_coord_table,
-        )
-
-    def insert_into_oid_coord_table(self):
-        self.exe_query(
-            'insert_into_oid_coord_table.sql',
-            oid_coord_db=self.db,
-            oid_coord_table=self.oid_coord_table,
+            'create_obs_view_over_olc.sql',
+            view_db=self.db,
+            view_table=self.obs_over_olc_view,
             olc_db=self.db,
             olc_table=self.olc_table,
         )
@@ -307,6 +298,16 @@ class ZtfPutter(CHPutter):
             meta_table=self.meta_table,
             obs_db=self.db,
             obs_table=self.obs_table,
+        )
+
+    def insert_from_olc_table_into_meta_table(self):
+        logging.info(f'Inserting data into {self.meta_table} from {self.olc_table}')
+        self.exe_query(
+            'insert_into_obs_meta_table_from_olc_table.sql',
+            meta_db=self.db,
+            meta_table=self.meta_table,
+            olc_db=self.db,
+            olc_table=self.olc_table,
         )
 
     def create_circle_table(self, on_exists: str = 'fail'):
@@ -553,13 +554,12 @@ class ZtfPutter(CHPutter):
         self.create_olc_table(on_exists=self.on_exists)
         self.insert_into_olc_table()
 
-    def action_oid_coord(self):
-        self.create_oid_coord_table(on_exists=self.on_exists)
-        self.insert_into_oid_coord_table()
+    def action_olc_views(self):
+        self.create_obs_view_over_olc()
 
     def action_meta(self):
         self.create_obs_meta_table(on_exists=self.on_exists)
-        self.insert_data_into_obs_meta_table()
+        self.insert_from_olc_table_into_meta_table()
 
     def action_circle(self):
         self.create_circle_table(on_exists=self.on_exists)
