@@ -1,12 +1,7 @@
-import logging
-from typing import List, Tuple
+import argparse
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
-import bs4
-from numpy.testing import assert_array_equal
-
-from download_cats.utils import url_text_content
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.ps1 import sql, sh
 from put_cat_to_ch.putter import CHPutter
@@ -65,3 +60,11 @@ class Ps1Putter(CHPutter):
 class Ps1ArgSubParser(ArgSubParser):
     command = 'ps1'
     putter_cls = Ps1Putter
+
+    def __init__(self, cli_args: argparse.Namespace):
+        super().__init__(cli_args)
+
+    @classmethod
+    def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
+        super().add_arguments_to_parser(parser)
+        parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
