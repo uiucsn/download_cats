@@ -4,7 +4,7 @@ import os
 import re
 from glob import glob
 from multiprocessing.pool import ThreadPool
-from typing import List, Tuple, Iterable, Optional, Union
+from typing import List, Iterable, Optional, Union
 
 import numpy as np
 

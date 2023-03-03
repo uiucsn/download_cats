@@ -1,4 +1,3 @@
-import logging
 from typing import List, Tuple
 
 import bs4
@@ -124,6 +123,6 @@ class TwoMASSPutter(CHPutter):
         self.test_psc_table()
 
 
-class DustMapsArgSubParser(ArgSubParser):
+class TwoMassArgSubParser(ArgSubParser):
     command = '2mass'
     putter_cls = TwoMASSPutter
