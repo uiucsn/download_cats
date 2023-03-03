@@ -40,13 +40,15 @@ class Ps1Putter(CHPutter):
             table=self.table,
         )
 
-    def insert_one_file_into_table(self, file: Path):
-        file = str(file)
+    def insert_one_file_into_table(self, file: str):
         self.shell_runner('insert.sh', file, f'{self.db}.{self.table}', self.host)
 
     def insert_into_table(self):
+        files = sorted(map(str, Path(self.dir).glob('*.csv')))
+        if len(files) == 0:
+            raise RuntimeError(f'No files found in {self.dir}')
         with ThreadPool(self.processes) as pool:
-            pool.map(self.insert_one_file_into_table, sorted(Path(self.dir).glob('*.csv')))
+            pool.map(self.insert_one_file_into_table, files)
 
     default_actions = ('create', 'insert',)
 
