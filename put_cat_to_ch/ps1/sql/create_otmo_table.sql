@@ -130,7 +130,8 @@ CREATE TABLE {if_not_exists} {db}.{table}
 	yMeanApMagErr Float32,
 	yMeanApMagStd Float32,
 	yMeanApMagNpt Int16,
-	yFlags Int32
+	yFlags Int32,
+    h3index10 UInt64 MATERIALIZED geoToH3(raMean, decMean, 10)
 )
 ENGINE = MergeTree()
 ORDER BY objID
