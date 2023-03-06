@@ -46,7 +46,7 @@ class DESPutter(CHPutter):
 
     @staticmethod
     def _get_fits_data_dtype(glob_pattern):
-        path = next(glob.iglob(glob_pattern))
+        path = next(glob.iglob(glob_pattern, recursive=True))
         data = fits.getdata(path, memmap=False)
         return data.dtype
 
