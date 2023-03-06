@@ -77,7 +77,7 @@ class DESPutter(CHPutter):
         logging.info(f'Inserting {path}')
         data = fits.getdata(path, memmap=False)
         data = np.asarray(data, dtype=self.le_dtype)
-        proc.write(data)
+        proc.stdin.write(data)
         return data.shape[0]
 
     def insert_data(self):
