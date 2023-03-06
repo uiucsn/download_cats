@@ -2,8 +2,6 @@ import argparse
 import glob
 import logging
 import os
-from itertools import chain
-from multiprocessing import Pool
 from subprocess import PIPE
 
 import numpy as np
@@ -23,9 +21,8 @@ class DESPutter(CHPutter):
     """
     db = 'des'
 
-    def __init__(self, dir, user, host, clickhouse_settings, on_exists, jobs, dr, **_kwargs):
+    def __init__(self, dir, user, host, clickhouse_settings, on_exists, dr, **_kwargs):
         self.data_dir = dir
-        self.processes = jobs
         self.on_exists = on_exists
         self.dr = dr
         self.user = user
@@ -94,8 +91,9 @@ class DESPutter(CHPutter):
         paths = sorted(glob.glob(self.fits_glob_pattern, recursive=True))
         if len(paths) == 0:
             raise ValueError(f'No fits files found by pattern {self.fits_glob_pattern}')
-        with Pool(self.processes) as pool:
-            pool.map(self.insert_fits_file, paths, chunksize=min(128, len(paths)//self.processes))
+        # multiprocessing is tricky here, multithreading wouldn't help much
+        for path in paths:
+            self.insert_fits_file(path)
 
     default_actions = ('create', 'insert',)
 
@@ -115,7 +113,5 @@ class DESArgSubParser(ArgSubParser):
     @classmethod
     def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
         super().add_arguments_to_parser(parser)
-        parser.add_argument('-j', '--jobs', type=int, default=1,
-                            help='number of jobs for "insert" action')
         parser.add_argument('--dr', type=int, default=DEFAULT_DES_DR,
                             help='DES DR number')
