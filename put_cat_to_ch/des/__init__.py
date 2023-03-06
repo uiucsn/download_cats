@@ -73,11 +73,12 @@ class DESPutter(CHPutter):
             columns=self.ch_columns_str,
         )
 
-    def insert_fits_file(self, proc, path):
+    def insert_fits_file(self, proc, path) -> int:
         logging.info(f'Inserting {path}')
         data = fits.getdata(path, memmap=False)
         data = np.asarray(data, dtype=self.le_dtype)
         proc.write(data)
+        return data.shape[0]
 
     def insert_data(self):
         logging.info('Collecting FITS paths')
@@ -85,6 +86,7 @@ class DESPutter(CHPutter):
         if len(paths) == 0:
             raise ValueError(f'No fits files found by pattern {self.fits_glob_pattern}')
         # multiprocessing is tricky here, multithreading wouldn't help much
+        n_rows = 0
         with self.shell_runner.popen(
                 'insert.sh',
                 f'{self.db}.{self.table_name}',
@@ -93,7 +95,8 @@ class DESPutter(CHPutter):
                 text=False,
         ) as proc:
             for path in paths:
-                self.insert_fits_file(proc, path)
+                n_rows += self.insert_fits_file(proc, path)
+        logging.info(f'Inserted {n_rows} rows')
 
     default_actions = ('create', 'insert',)
 
