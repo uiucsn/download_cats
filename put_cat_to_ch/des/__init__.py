@@ -54,7 +54,7 @@ class DESPutter(CHPutter):
 
     @property
     def table_name(self):
-        return f'dr{self.dr}_calibObj'
+        return f'dr{self.dr}_main'
 
     @property
     def ch_columns(self):
