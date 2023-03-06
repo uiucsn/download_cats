@@ -58,8 +58,8 @@ class DESPutter(CHPutter):
 
     @property
     def ch_columns(self):
-        return dict(chain.from_iterable(np_dtype_to_ch(dtype, str_is_bytes=True)
-                                        for name, (dtype, _offset) in self.le_dtype.fields.items()))
+        return {name: np_dtype_to_ch(dtype, str_is_bytes=True)
+                for name, (dtype, _offset) in self.le_dtype.fields.items()}
 
     @property
     def ch_columns_str(self):
