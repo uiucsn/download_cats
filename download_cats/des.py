@@ -1,6 +1,6 @@
 import logging
 import os
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 
 from bs4 import BeautifulSoup
 
@@ -32,7 +32,7 @@ class DesFetcher(BaseFetcher):
             if not href.startswith('DES'):
                 continue
             basename = href.strip('/')
-            filename = f'{basename}_dr2_main.fits'
+            filename = f'{unquote(basename)}_dr2_main.fits'
             urls.append(urljoin(self.base_url, f'{basename}/{filename}'))
             filenames.append(filename)
         return urls, filenames

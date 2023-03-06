@@ -25,9 +25,6 @@ class DESPutter(CHPutter):
 
     def __init__(self, dir, user, host, clickhouse_settings, on_exists, jobs, dr, **_kwargs):
         self.data_dir = dir
-        self.fits_glob_pattern = os.path.join(dir, '*fits')
-        self.fits_dtype = self._get_fits_data_dtype(self.fits_glob_pattern)
-        self.le_dtype = dtype_to_le(self.fits_dtype)
         self.processes = jobs
         self.on_exists = on_exists
         self.dr = dr
@@ -45,6 +42,10 @@ class DESPutter(CHPutter):
             sync_request_timeout=86400,
         )
         self.shell_runner = ShellRunner(sh)
+
+        self.fits_glob_pattern = os.path.join(dir, f'**/*_dr{self.dr}_main.fits')
+        self.fits_dtype = self._get_fits_data_dtype(self.fits_glob_pattern)
+        self.le_dtype = dtype_to_le(self.fits_dtype)
 
     @staticmethod
     def _get_fits_data_dtype(glob_pattern):
@@ -90,7 +91,9 @@ class DESPutter(CHPutter):
 
     def insert_data(self):
         logging.info('Collecting FITS paths')
-        paths = sorted(glob.iglob(self.fits_glob_pattern, recursive=True))
+        paths = sorted(glob.glob(self.fits_glob_pattern, recursive=True))
+        if len(paths) == 0:
+            raise ValueError(f'No fits files found by pattern {self.fits_glob_pattern}')
         with Pool(self.processes) as pool:
             pool.map(self.insert_fits_file, paths, chunksize=min(128, len(paths)//self.processes))
 
