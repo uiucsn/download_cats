@@ -6,6 +6,7 @@ from subprocess import PIPE
 
 import numpy as np
 from astropy.io import fits
+from joblib import Parallel, delayed
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.putter import CHPutter
@@ -21,12 +22,13 @@ class DESPutter(CHPutter):
     """
     db = 'des'
 
-    def __init__(self, dir, user, host, clickhouse_settings, on_exists, dr, **_kwargs):
+    def __init__(self, dir, user, host, jobs, clickhouse_settings, on_exists, dr, **_kwargs):
         self.data_dir = dir
         self.on_exists = on_exists
         self.dr = dr
         self.user = user
         self.host = host
+        self.processes = jobs
         self.settings = clickhouse_settings
         super().__init__(
             sql,
@@ -91,9 +93,7 @@ class DESPutter(CHPutter):
         paths = sorted(glob.glob(self.fits_glob_pattern, recursive=True))
         if len(paths) == 0:
             raise ValueError(f'No fits files found by pattern {self.fits_glob_pattern}')
-        # multiprocessing is tricky here, multithreading wouldn't help much
-        for path in paths:
-            self.insert_fits_file(path)
+        Parallel(n_jobs=self.processes, backend='loky')(delayed(self.insert_fits_file)(path) for path in paths)
 
     default_actions = ('create', 'insert',)
 
@@ -115,3 +115,4 @@ class DESArgSubParser(ArgSubParser):
         super().add_arguments_to_parser(parser)
         parser.add_argument('--dr', type=int, default=DEFAULT_DES_DR,
                             help='DES DR number')
+        parser.add_argument('-j', '--jobs', default=1, type=int, help='number of parallel field insert jobs')
