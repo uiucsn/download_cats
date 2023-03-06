@@ -65,4 +65,7 @@ def is_parquet_file_empty(path: Union[str, Path]) -> bool:
     # This is a lazy operation, we read metadata only
     pf = ParquetFile(path)
     return pf.metadata.num_rows == 0
- 
+
+
+def dtype_to_le(dtype):
+    return np.dtype([(name, dt.newbyteorder('<')) for name, (dt, _offset) in dtype.fields.items()])

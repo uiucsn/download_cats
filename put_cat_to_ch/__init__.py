@@ -1,5 +1,6 @@
 from . import arg_sub_parser, utils
 from .cats_htm import *
+from .des import *
 from .dust_maps import *
 from .gaia_dr import *
 from .ps1 import *
