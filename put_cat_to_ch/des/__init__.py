@@ -93,7 +93,7 @@ class DESPutter(CHPutter):
         paths = sorted(glob.glob(self.fits_glob_pattern, recursive=True))
         if len(paths) == 0:
             raise ValueError(f'No fits files found by pattern {self.fits_glob_pattern}')
-        Parallel(n_jobs=self.processes, backend='loky')(delayed(self.insert_fits_file)(path) for path in paths)
+        Parallel(n_jobs=self.processes, backend='loky', verbose=10)(delayed(self.insert_fits_file)(path) for path in paths)
 
     default_actions = ('create', 'insert',)
 
