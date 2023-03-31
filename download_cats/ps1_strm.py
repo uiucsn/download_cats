@@ -7,7 +7,7 @@ from download_cats.utils import *
 
 
 class Ps1StrmFetcher(BaseFetcher):
-    catalog_name = 'Gaia'
+    catalog_name = 'Ps1-STRM'
 
     def __init__(self, cli_args):
         super().__init__(cli_args)
