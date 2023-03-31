@@ -59,7 +59,6 @@ def np_dtype_to_ch(dtype: type, *, nullable: bool = False, str_is_bytes: bool = 
         ch_type = f'Nullable({ch_type})'
     return ch_type
 
-
 def is_parquet_file_empty(path: Union[str, Path]) -> bool:
     "Check Parquet file meatadata for number of rows and return True if zero"
     # This is a lazy operation, we read metadata only

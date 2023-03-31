@@ -4,6 +4,7 @@ from .des import *
 from .dust_maps import *
 from .gaia_dr import *
 from .ps1 import *
+from .ps1_strm import *
 from .sdss import *
 from .twomass import *
 from .ztf import *
