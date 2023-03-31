@@ -18,6 +18,10 @@ class Ps1StrmFetcher(BaseFetcher):
 
     def __call__(self):
         logging.info(f'Fetching PS1 STRM data')
+        # download readme
+        readme_filename = 'hlsp_ps1-strm_ps1_gpc1_all_multi_v1_readme.txt'
+        download_file(urljoin(self.base_url, readme_filename), os.path.join(self.dest, readme_filename))
+        # download data
         checksums = parse_checksums(url_text_content(self.checksums_url))
         with process_pool(self.cli_args) as pool:
             pool.starmap(
