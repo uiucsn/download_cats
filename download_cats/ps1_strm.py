@@ -27,5 +27,9 @@ class Ps1StrmFetcher(BaseFetcher):
                 chunksize=1
             )
 
+    @staticmethod
+    def add_arguments_to_parser(parser):
+        pass
+
 
 __all__ = ('Ps1StrmFetcher',)
