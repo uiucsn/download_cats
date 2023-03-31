@@ -13,7 +13,6 @@ class Ps1StrmFetcher(BaseFetcher):
         super().__init__(cli_args)
         self.dest = cli_args.dir
         self.processes = cli_args.jobs
-        self.dr = cli_args.dr
         self.base_url = f'https://archive.stsci.edu/hlsps/ps1-strm/'
         self.checksums_url = urljoin(self.base_url, 'hlsp_ps1-strm_ps1_gpc1_all_multi_v1_md5sum.txt')
 
