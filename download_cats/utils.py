@@ -131,6 +131,8 @@ def parse_checksums(s):
     """Extract filename-checksums pairs from checksums file content"""
     checksums = {}
     for line in s.splitlines():
+        if line == '':
+            continue
         checksum, filename = line.split()
         checksums[filename] = checksum
     return checksums
