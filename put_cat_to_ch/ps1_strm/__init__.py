@@ -82,9 +82,9 @@ class Ps1StrmPutter(CHPutter):
                 line = line.strip()
                 if line == '':
                     continue
-                name, type, *_ = line.split()
+                name, tp, *_ = line.split()
                 names.append(name)
-                types.append(types)
+                types.append(tp)
         return dict(zip(names, types))
 
     @property
