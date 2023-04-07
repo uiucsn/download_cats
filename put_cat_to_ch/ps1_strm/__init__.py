@@ -21,6 +21,7 @@ __all__ = ('Ps1StrmPutter', 'Ps1StrmArgSubParser',)
 
 
 # Readme specifies weird types, do not use it for other catalogs
+# Also one of the types in readme is wrong, see bellow
 def _sql_type_to_ch(sql):
     match sql:
         case 'bigint':
@@ -67,29 +68,31 @@ class Ps1StrmPutter(CHPutter):
         assert len(files) > 0, f'No files found in {self.data_dir}'
         return files
 
+    # Original readme specified int type for cellDistance_Class while it should be float
     @cached_property
-    def column_definitions_from_readme(self) -> Dict[str, str]:
-        with open(os.path.join(self.data_dir, 'hlsp_ps1-strm_ps1_gpc1_all_multi_v1_readme.txt')) as fh:
-            # Read until footer
-            for line in fh:
-                if line.startswith('Column Name'):
-                    break
-            assert fh.readline().startswith('-------')
-
-            names = []
-            types = []
-            for line in fh:
-                line = line.strip()
-                if line == '':
-                    continue
-                name, tp, *_ = line.split()
-                names.append(name)
-                types.append(tp)
-        return dict(zip(names, types))
-
-    @property
     def ch_columns(self) -> Dict[str, str]:
-        return {name: _sql_type_to_ch(type) for name, type in self.column_definitions_from_readme.items()}
+        fixed_readme_types = {
+            "objID": "bigint",
+            "uniquePspsOBid": "bigint",
+            "raMean": "float",
+            "decMean": "float",
+            "l": "float",
+            "b": "float",
+            "class": "varchar[8]",
+            "prob_Galaxy": "float",
+            "prob_Star": "float",
+            "prob_QSO": "float",
+            "extrapolation_Class": "int",
+            "cellDistance_Class": "float",  # <<< was originally int
+            "cellID_Class": "int",
+            "z_phot": "float",
+            "z_photErr": "float",
+            "z_phot0": "float",
+            "extrapolation_Photoz": "int",
+            "cellDistance_Photoz": "float",
+            "cellID_Photoz": "int",
+        }
+        return {name: _sql_type_to_ch(type) for name, type in fixed_readme_types.items()}
 
     @property
     def ch_columns_str(self) -> str:
