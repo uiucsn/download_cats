@@ -1,15 +1,33 @@
 import logging
 from importlib.resources import read_text
+from subprocess import check_call
 from types import ModuleType
 from typing import List, Tuple
 
-from clickhouse_driver import Client
+from clickhouse_driver import Client as RemoteClient
+
+
+# Duck-typed to be compatible with clickhouse_driver.Client
+class LocalClient:
+    """Use "clickhouse local" instead of remote client"""
+    def __init__(self, **kwargs):
+        self.path = kwargs['path']
+
+    def execute(self, query, params=None, columnar=False):
+        args = [
+            'clickhouse',
+            'local',
+            '--path',
+            self.path,
+            '--query',
+            query,
+        ]
 
 
 class CHClient:
     def __init__(self, module: ModuleType, **kwargs):
         self.module = module
-        self.client = Client(**kwargs)
+        self.client = RemoteClient(**kwargs)
 
     # TODO: if python 3.7 support can be dropped, replace signature to (x=True, /)
     @staticmethod

@@ -25,7 +25,12 @@ def check_name_valid(name):
 def get_catalog_list(dest):
     url = urljoin(BASE_URL, HTML_TABLE_NAME)
     logging.info('Downloading catalog HTML table')
-    table = ascii.read(url, format='html')
+    try:
+        table = ascii.read(url, format='html')
+    except ConnectionError as e:
+        path_local = os.path.join(dest, HTML_TABLE_NAME)
+        logging.warning(f'URL {url} is not available, trying to use local file {path_local}')
+        table = ascii.read(path_local, format='html')
     table = table[[check_name_valid(name) for name in table['Name']]]
     table['dest'] = [os.path.join(dest, get_CatDir(name)) for name in table['Name']]
     table['wget_url'] = [urljoin(BASE_URL, file) for file in table['wget file']]
