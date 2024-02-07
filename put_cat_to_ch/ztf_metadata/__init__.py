@@ -2,6 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
+import pandas as pd
 from astropy.coordinates import SkyCoord
 from astropy.time import Time, TimeDelta
 
@@ -20,14 +21,15 @@ __all__ = ("ZTFMetadataPutter", "ZTFMetadataArgSubParser",)
 class ZTFMetadataPutter(CHPutter):
     # Put to the same DB as ZTF data
     db = "ztf"
+    table_name = "exposures"
 
-    def __init__(self, dir, user, host, clickhouse_settings, on_exists, **_kwargs):
+    def __init__(self, dir, user, host, clickhouse_settings, on_exists, jobs, **_kwargs):
         self.data_dir = dir
         self.on_exists = on_exists
+        self.processes = jobs
         self.user = user
         self.host = host
         self.settings = clickhouse_settings
-        self.table_name = 'strm'
         super().__init__(
             sql,
             host=self.host,
@@ -91,9 +93,10 @@ class ZTFMetadataPutter(CHPutter):
             # Here ra and dec are for the center of the field
             exposures = ztf_metadata.get_data(exclude=['ra', 'dec'])
 
-        df = exposures.join(rcid_centers, how='inner', on='field')
+        df = pd.merge(exposures, rcid_centers, how='inner', left_on='field', right_on='fieldid')
 
-        obsdate = Time(df['obsdate'])
+        # Looks like a bug in astropy, it cannot convert it from dtype=object
+        obsdate = Time(df['obsdate'].values.astype(str))
         del df['obsdate']
         df['expstart_mjd'] = obsdate.mjd
 
@@ -134,3 +137,5 @@ class ZTFMetadataArgSubParser(ArgSubParser):
     @classmethod
     def add_arguments_to_parser(cls, parser: argparse.ArgumentParser):
         super().add_arguments_to_parser(parser)
+        parser.add_argument('-j', '--jobs', type=int, default=1,
+                            help='number of jobs for insert action')
