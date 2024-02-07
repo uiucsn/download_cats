@@ -9,3 +9,4 @@ BeautifulSoup4
 lxml
 astropy
 pyarrow
+ztffields

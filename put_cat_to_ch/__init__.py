@@ -8,6 +8,7 @@ from .ps1_strm import *
 from .sdss import *
 from .twomass import *
 from .ztf import *
+from .ztf_metadata import *
 
 
 ARG_SUB_PARSERS = {cls.command: cls for cls in utils.subclasses(arg_sub_parser.ArgSubParser)}
