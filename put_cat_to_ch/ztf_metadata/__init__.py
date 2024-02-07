@@ -67,7 +67,7 @@ class ZTFMetadataPutter(CHPutter):
 
     @property
     def ch_columns_str(self) -> str:
-        raise ",\n    ".join(f"{name} {ch_type}" for name, ch_type in self.ch_columns.items())
+        return ",\n    ".join(f"{name} {ch_type}" for name, ch_type in self.ch_columns.items())
 
     def create_table(self, on_exists: str):
         logging.info('Creating DB table for ZTF exposure metadata')
