@@ -2,9 +2,11 @@ import argparse
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from astropy.coordinates import SkyCoord
 from astropy.time import Time, TimeDelta
+from joblib import Parallel, delayed
 
 from put_cat_to_ch.arg_sub_parser import ArgSubParser
 from put_cat_to_ch.putter import CHPutter
@@ -23,8 +25,9 @@ class ZTFMetadataPutter(CHPutter):
     db = "ztf"
     table_name = "exposures"
 
-    def __init__(self, dir, user, host, clickhouse_settings, on_exists, jobs, **_kwargs):
+    def __init__(self, dir, tmp_dir, user, host, clickhouse_settings, on_exists, jobs, **_kwargs):
         self.data_dir = dir
+        self.tmp_dir = tmp_dir
         self.on_exists = on_exists
         self.processes = jobs
         self.user = user
@@ -85,14 +88,18 @@ class ZTFMetadataPutter(CHPutter):
     def prepare_data(self):
         logging.info('Preparing ZTF exposure metadata')
 
-        rcid_centers = get_rcid_centers()
+        logging.info('Getting ZTF fields centers')
+        # Convert rcid from index to column
+        rcid_centers = get_rcid_centers().reset_index(level=1)
 
+        logging.info('Getting ZTF exposure metadata')
         with ZTFMetadataExposures(path=self.db_file) as ztf_metadata:
             ch_columns_wo_new = {name: ch_type for name, ch_type in self.ch_columns.items() if name not in {'expstart_mjd', 'expmid_hmjd', 'rcid'}}
             ztf_metadata.validate_ch_columns(ch_columns_wo_new)
             # Here ra and dec are for the center of the field
             exposures = ztf_metadata.get_data(exclude=['ra', 'dec'])
 
+        logging.info('Merging ZTF exposure metadata with field centers')
         df = pd.merge(exposures, rcid_centers, how='inner', left_on='field', right_on='fieldid')
 
         # Looks like a bug in astropy, it cannot convert it from dtype=object
@@ -100,11 +107,17 @@ class ZTFMetadataPutter(CHPutter):
         del df['obsdate']
         df['expstart_mjd'] = obsdate.mjd
 
-        df['expmid_mjd'] = exposure_start_to_mid_helio(
-            exposure_start = obsdate,
-            exptime = TimeDelta(df['exptime'], format='sec'),
-            coord = SkyCoord(df['ra'], df['dec'], unit='deg'),
-        ).mjd
+        exptime = TimeDelta(df['exptime'], format='sec')
+        coord = SkyCoord(df['ra'], df['dec'], unit='deg')
+
+        logging.info('Calculating exposure mid time in heliocentric MJD')
+        step = len(df) // (self.processes + 1)
+        edges = np.arange(0, len(df) + step, step)
+        result_times = Parallel(n_jobs=self.processes, backend="loky")(delayed(exposure_start_to_mid_helio)(obsdate[start:end], exptime[start:end], coord[start:end]) for start, end in zip(edges[:-1], edges[1:]))
+        mjd = np.concatenate([times.mjd for times in result_times])
+        df['expmid_hmjd'] = mjd
+
+        df.to_parquet(Path(self.tmp_dir) / 'ztf_metadata.parquet', index=False)
 
         return df
 
@@ -113,7 +126,7 @@ class ZTFMetadataPutter(CHPutter):
         df = self.prepare_data()
         self.client.execute(
             f'INSERT INTO {self.db}.{self.table_name} VALUES',
-            df[list(self.ch_columns)].to_dict(orient='list').values(),
+            df[list(self.ch_columns)].to_dict(orient='list'),
             columnar=True,
         )
 
