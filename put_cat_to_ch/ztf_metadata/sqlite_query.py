@@ -76,7 +76,7 @@ class ZTFMetadataExposures:
                 raise ValueError(f"Column {col} not found in {self.table_name}")
 
             selector = col
-            if self.table_info[col].type != 'TEXT' and self.table_info[col].notnull:
+            if self.table_info[col].type != 'TEXT' and not self.table_info[col].notnull:
                 selector = f"NULLIF({col}, '')"
 
             selectors.append(selector)
@@ -84,5 +84,5 @@ class ZTFMetadataExposures:
         self.cursor.execute(f"SELECT {', '.join(selectors)} FROM {self.table_name}")
         data = self.cursor.fetchall()
 
-        df = pd.DataFrame(data, columns=include)
+        df = pd.DataFrame(data, columns=include).convert_dtypes()
         return df
