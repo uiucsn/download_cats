@@ -17,7 +17,6 @@ SELECT
     any(scibckgnd) AS scibckgnd,
     any(ellip) AS ellip,
     any(ellippa) AS ellippa,
-    any(expstart_mjd) AS expstart_mjd,
-    any(expmid_hmjd) AS expmid_hmjd
+    any(expstart_mjd) AS expstart_mjd
 FROM {db_exposures}.{table_exposures}
 GROUP BY expid
