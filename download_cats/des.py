@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from urllib.parse import urljoin, unquote
 
 from bs4 import BeautifulSoup
@@ -27,19 +28,23 @@ class DesFetcher(BaseFetcher):
         bs = BeautifulSoup(html)
         urls = []
         filenames = []
-        for td in bs.find_all('td', attrs={'class': 'link'}):
-            href = td.a['href']
-            if not href.startswith('DES'):
+        for td in bs.find_all('td'):
+            if (a := td.a) is None:
                 continue
-            basename = href.strip('/')
-            filename = f'{unquote(basename)}_dr2_main.fits'
-            urls.append(urljoin(self.base_url, f'{basename}/{filename}'))
+            if (href := a['href']) is None:
+                continue
+            name = Path(href).name
+            if not name.startswith('DES'):
+                continue
+            filename = f'{unquote(name)}_dr2_main.fits'
+            urls.append(urljoin(self.base_url, f'{name}/{filename}'))
             filenames.append(filename)
         return urls, filenames
 
     def __call__(self):
         logging.info(f'Fetching DES DR{self.dr} main table')
         urls, filenames = self._get_urls_filenames()
+        assert len(urls) > 0
         paths = [os.path.join(self.dest, fname) for fname in filenames]
         with process_pool(self.cli_args) as pool:
             pool.starmap(download_file, zip(urls, paths), chunksize=1)
