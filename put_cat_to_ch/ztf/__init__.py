@@ -502,7 +502,7 @@ class ZtfPutter(CHPutter):
             where_clause=f'WHERE mjd >= {self.short_mjd_min} AND mjd <= {self.short_mjd_max}',
         )
 
-    default_actions = ('obs', 'meta', 'circle', 'xmatch', 'source_obs', 'source_meta', 'source_meta_short',)
+    default_actions = ('parquet', 'olc', 'olc_views', 'meta', 'rm_parquet')
 
     def action_obs_csv(self):
         self.action_gen_csv()
